@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  /* F E Y Brand Colors */
+  --color-porcelain: #F6F5F2;
+  --color-ink: #1A1A1A;
+  --color-stone-mist: rgba(26, 26, 26, 0.1);
+  
+  /* F E Y Typography */
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-porcelain);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* The "Expensive" text selection highlight */
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-porcelain);
+  }
+}
