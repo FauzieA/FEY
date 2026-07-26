@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-parchment: #F8F5F2;
+    --card-porcelain: #FFFCFA;
+    --burgundy-wine: #6B2D3A;
+    --dusty-rose: #D9B7BE;
+    --brushed-gold: #D4AF37;
+    --charcoal-ink: #1A1817;
+  }
+
+  body {
+    background-color: var(--bg-parchment);
+    color: var(--charcoal-ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom warm parchment scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #F8F5F2;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5DDD8;
+  border-radius: 9999px;
+}
