@@ -9,7 +9,6 @@ import {
   Plus,
   Minus,
   MoreHorizontal,
-  ChevronRight,
   Play,
   Pause,
   RotateCcw,
@@ -31,7 +30,7 @@ export default function WorkoutPage() {
     () =>
       EXERCISE_DATABASE.find((e) => e.id === exerciseId) ||
       EXERCISE_DATABASE[0],
-    [exerciseId],
+    [exerciseId]
   );
 
   const todayStr = useMemo(() => new Date().toDateString(), []);
@@ -43,7 +42,7 @@ export default function WorkoutPage() {
       .startsWith(`session_${exercise.id}_`)
       .toArray();
     return logs.find(
-      (l) => new Date(l.completedAt).toDateString() === todayStr,
+      (l) => new Date(l.completedAt).toDateString() === todayStr
     );
   }, [exercise.id, todayStr]);
 
@@ -65,7 +64,7 @@ export default function WorkoutPage() {
   const [activeTimerIndex, setActiveTimerIndex] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [targetReachedSet, setTargetReachedSet] = useState<number | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Re-initialize sets if exerciseId changes and there's no existing log
   useEffect(() => {
@@ -86,7 +85,15 @@ export default function WorkoutPage() {
   // Sync state cleanly when existing database log is fetched
   useEffect(() => {
     if (existingLog?.exercises?.[0]?.sets) {
-      setSets(existingLog.exercises[0].sets);
+      setSets(
+        existingLog.exercises[0].sets.map((s, i) => ({
+          setNum: s.setNum ?? i + 1,
+          weightKg: s.weightKg ?? 0,
+          reps: s.reps ?? 0,
+          durationSec: s.durationSec ?? 10,
+          completed: s.completed ?? false,
+        }))
+      );
       if (existingLog.exercises[0].notes) {
         setNotes(existingLog.exercises[0].notes);
       }
@@ -98,7 +105,7 @@ export default function WorkoutPage() {
   const [isRestActive, setIsRestActive] = useState(false);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (isRestActive && restSeconds > 0) {
       timer = setInterval(() => setRestSeconds((prev) => prev - 1), 1000);
     } else if (restSeconds === 0) {
@@ -210,7 +217,7 @@ export default function WorkoutPage() {
   const handleUpdateSet = (
     index: number,
     field: "weightKg" | "reps" | "durationSec",
-    delta: number,
+    delta: number
   ) => {
     const updated = [...sets];
     updated[index][field] = Math.max(0, updated[index][field] + delta);
@@ -221,7 +228,7 @@ export default function WorkoutPage() {
     try {
       const totalVolume = sets.reduce(
         (acc, s) => acc + (s.completed ? s.weightKg * s.reps : 0),
-        0,
+        0
       );
 
       const dateKey = new Date().toISOString().slice(0, 10);

@@ -1,5 +1,5 @@
 import { CharacterRepository } from '@/repositories/characterRepository';
-import type { CharacterState, WorkoutSession } from '@/types';
+import type { WorkoutSession, CharacterProfile } from '@/db/dexie';
 
 export class GamificationService {
   /**
@@ -10,15 +10,22 @@ export class GamificationService {
     leveledUp: boolean;
     newLevel: number;
   }> {
-    const char = await CharacterRepository.getCharacter();
+    const char = await CharacterRepository.getProfile();
     if (!char) return { xpEarned: 0, leveledUp: false, newLevel: 1 };
 
-    // Calculate base XP from session duration and completed sets
-    const baseMinutes = Math.max(Math.floor(session.durationSeconds / 60), 10);
-    const totalSets = session.exercises.reduce((acc, ex) => acc + ex.sets.filter(s => s.completed).length, 0);
+    // Calculate base XP from session duration (fallback to durationMinutes if durationSeconds is undefined)
+    const durationSec = session.durationSeconds ?? (session.durationMinutes ? session.durationMinutes * 60 : 0);
+    const baseMinutes = Math.max(Math.floor(durationSec / 60), 10);
     
+    // Safely iterate over exercises and completed sets
+    const exercises = session.exercises ?? [];
+    const totalSets = exercises.reduce(
+      (acc, ex) => acc + (ex.sets ? ex.sets.filter((s) => s.completed ?? true).length : 0),
+      0
+    );
+
     // Formula: 5 XP per set completed + 2 XP per minute exercised + 50 completion bonus
-    const xpEarned = (totalSets * 5) + (baseMinutes * 2) + 50;
+    const xpEarned = totalSets * 5 + baseMinutes * 2 + 50;
 
     let currentXp = char.currentXp + xpEarned;
     let level = char.level;
@@ -58,14 +65,17 @@ export class GamificationService {
       }
     }
 
-    await CharacterRepository.updateCharacter({
+    const updatedProfile: CharacterProfile = {
+      ...char,
       level,
       currentXp,
       nextLevelXp,
       currentStreak,
       lastWorkoutDate: new Date().toISOString(),
       attributes: updatedAttributes,
-    });
+    };
+
+    await CharacterRepository.saveProfile(updatedProfile);
 
     return { xpEarned, leveledUp, newLevel: level };
   }
@@ -73,16 +83,21 @@ export class GamificationService {
   /**
    * Calculates completion percentage for the current week (Monday through Sunday)
    */
-  static getWeeklyCompletionPercentage(sessions: WorkoutSession[], targetWorkoutsPerWeek = 5): number {
+  static getWeeklyCompletionPercentage(
+    sessions: WorkoutSession[],
+    targetWorkoutsPerWeek = 5
+  ): number {
     const now = new Date();
     const dayOfWeek = now.getDay() || 7;
     const monday = new Date(now);
     monday.setDate(now.getDate() - dayOfWeek + 1);
     monday.setHours(0, 0, 0, 0);
 
-    const sessionsThisWeek = sessions.filter(
-      s => s.completed && new Date(s.startedAt) >= monday
-    ).length;
+    const sessionsThisWeek = sessions.filter((s) => {
+      const isCompleted = s.completed ?? true;
+      const sessionDate = new Date(s.startedAt || s.completedAt);
+      return isCompleted && sessionDate >= monday;
+    }).length;
 
     return Math.min(Math.round((sessionsThisWeek / targetWorkoutsPerWeek) * 100), 100);
   }

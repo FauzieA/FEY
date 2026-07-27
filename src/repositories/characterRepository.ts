@@ -1,20 +1,20 @@
 import { db } from '@/db/dexie';
-import type { CharacterState, AppSettings } from '@/types';
+import type { CharacterProfile, AppSettings } from '@/db/dexie';
 
 export class CharacterRepository {
-  static async getCharacter(): Promise<CharacterState | undefined> {
+  static async getProfile(): Promise<CharacterProfile | undefined> {
     return await db.character.get('user');
   }
 
-  static async updateCharacter(updates: Partial<CharacterState>): Promise<void> {
-    await db.character.update('user', updates);
+  static async saveProfile(profile: CharacterProfile): Promise<string> {
+    return await db.character.put(profile);
   }
 
   static async getSettings(): Promise<AppSettings | undefined> {
     return await db.settings.get('app_settings');
   }
 
-  static async updateSettings(updates: Partial<AppSettings>): Promise<void> {
-    await db.settings.update('app_settings', updates);
+  static async saveSettings(settings: AppSettings): Promise<string> {
+    return await db.settings.put(settings);
   }
 }

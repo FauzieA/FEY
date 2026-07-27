@@ -1,80 +1,39 @@
-// --- Character & Gamification ---
-export interface CharacterState {
-  id: string;
-  level: number;
-  currentXp: number;
-  nextLevelXp: number;
-  currentStreak: number;
-  lastWorkoutDate: string | null;
-  attributes: {
-    STR: number; // Strength
-    END: number; // Endurance
-    VOL: number; // Work Volume
-    CON: number; // Consistency
-  };
+export interface ExerciseSet {
+  id?: string;
+  reps?: number;
+  weight?: number;
+  completed?: boolean;
 }
 
-// --- Exercises & Plans ---
-export interface Exercise {
-  id: string;
-  name: string;
-  targetMuscle: string;
-  category: 'Barbell' | 'Dumbbell' | 'Cable' | 'Machine' | 'Bodyweight';
-  defaultSets: number;
-  defaultReps: number;
+export interface WorkoutExercise {
+  exerciseId: string;
+  name?: string;
+  sets: ExerciseSet[];
 }
 
 export interface WorkoutPlan {
-  id: string;
-  title: string;
-  dayOfWeek: number; // 1 = Mon, ..., 7 = Sun
-  targetMuscles: string[];
-  exercises: {
-    exerciseId: string;
-    exerciseName: string;
-    targetSets: number;
-    targetReps: number;
-  }[];
-}
-
-// --- Active Workout Logging ---
-export interface SetLog {
-  setNumber: number;
-  repsCompleted: number;
-  weightKg: number;
-  completed: boolean;
-}
-
-export interface ExerciseLog {
-  exerciseId: string;
-  exerciseName: string;
-  sets: SetLog[];
+  id?: string | number;
+  name: string;
+  dayOfWeek?: number;
+  exercises?: WorkoutExercise[];
 }
 
 export interface WorkoutSession {
-  id?: number;
-  planId: string;
-  planTitle: string;
-  startedAt: string;
-  completedAt?: string;
-  durationSeconds: number;
+  id?: string | number;
+  planId?: string | number;
+  startedAt: string | Date;
+  completedAt?: string | Date;
+  durationSeconds: number; // Required (default to 0 when creating sessions)
+  durationMinutes?: number;
+  totalVolumeKg?: number;
   completed: boolean;
-  xpEarned: number;
-  exercises: ExerciseLog[];
+  exercises: WorkoutExercise[]; // Required array (can be empty [])
 }
 
-// --- Records & Settings ---
 export interface PersonalRecord {
-  id?: number;
+  id?: string | number;
   exerciseId: string;
-  exerciseName: string;
-  value: number; // Weight in kg
-  achievedAt: string;
-}
-
-export interface AppSettings {
-  id: string;
-  defaultRestSeconds: number;
-  soundEnabled: boolean;
-  vibrationEnabled: boolean;
+  weight: number;
+  reps?: number;
+  date?: string | Date;
 }

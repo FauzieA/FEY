@@ -1,5 +1,9 @@
 import Dexie from "dexie";
 
+/* -------------------------------------------------------------------------- */
+/*                                 INTERFACES                                 */
+/* -------------------------------------------------------------------------- */
+
 export interface PlanExercise {
   exerciseId: string;
   exerciseName: string;
@@ -11,34 +15,50 @@ export interface PlanExercise {
 export interface WorkoutPlan {
   id: string; // e.g., 'plan_mon'
   title: string;
+  name?: string; 
   dayOfWeek?: number;
   targetMuscles?: string[];
   exercises: PlanExercise[];
 }
 
 export interface ExerciseSetLog {
-  setNum: number;
-  weightKg: number;
-  reps: number;
+  id?: string;
+  setNum?: number;
+  reps?: number;
+  weightKg?: number;
+  weight?: number; 
   durationSec?: number;
-  completed: boolean;
+  completed?: boolean;
 }
 
 export interface SessionExercise {
   exerciseId: string;
-  exerciseName: string;
+  exerciseName?: string;
+  name?: string;
   sets: ExerciseSetLog[];
   notes?: string;
 }
 
 export interface WorkoutSession {
   id: string;
-  planTitle: string;
+  planId?: string | number;
+  planTitle?: string;
+  startedAt?: string | Date;
   completedAt: string; // ISO String timestamp
+  durationSeconds?: number; // Optional
   durationMinutes: number;
   totalVolumeKg: number;
-  xpEarned: number;
+  xpEarned?: number;
+  completed?: boolean; // Optional
   exercises: SessionExercise[];
+}
+
+export interface PersonalRecord {
+  id?: string | number;
+  exerciseId: string;
+  weight: number;
+  reps?: number;
+  date?: string | Date;
 }
 
 export interface CharacterAttribute {
@@ -65,17 +85,25 @@ export interface AppSettings {
   vibrationEnabled: boolean;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                             DEXIE DATABASE CLASS                           */
+/* -------------------------------------------------------------------------- */
+
 class FeyDatabase extends Dexie {
   plans!: Dexie.Table<WorkoutPlan, string>;
   sessions!: Dexie.Table<WorkoutSession, string>;
+  personalRecords!: Dexie.Table<PersonalRecord, string | number>;
   character!: Dexie.Table<CharacterProfile, string>;
   settings!: Dexie.Table<AppSettings, string>;
 
   constructor() {
     super("FeyDatabase");
+    
+    // Schema definition for IndexedDB
     this.version(1).stores({
-      plans: "id",
-      sessions: "id, completedAt",
+      plans: "id, dayOfWeek",
+      sessions: "id, completedAt, planId",
+      personalRecords: "++id, exerciseId, date",
       character: "id",
       settings: "id",
     });

@@ -67,7 +67,7 @@ export default function ProgressPage() {
     let posteriorSets = 0;
     let totalDurationSeconds = 0;
 
-    filteredSessions.forEach((sess) => {
+    filteredSessions.forEach((sess: any) => {
       totalDurationSeconds += sess.durationSeconds || 0;
 
       sess.exercises?.forEach((ex: any) => {

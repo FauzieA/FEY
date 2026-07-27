@@ -12,7 +12,7 @@ export async function initializeDatabase() {
       currentXp: 0,
       nextLevelXp: 1000,
       currentStreak: 0,
-      lastWorkoutDate: undefined,
+      lastWorkoutDate: null,
       attributes: {
         STR: 10,
         END: 10,

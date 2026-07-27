@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/dexie";
@@ -7,25 +7,25 @@ import {
   ChevronLeft,
   Calendar,
   ChevronDown,
-  Dumbbell,
   CheckCircle2,
-  Layers,
-  Repeat,
-  Flame,
 } from "lucide-react";
 
-// Helper to get ISO week key (e.g. "2026-W18") and readable label
+// Helper type extension for safe optional property checks
+type SessionLog = typeof db.sessions extends { toArray: () => Promise<infer U> }
+  ? U extends Array<infer S>
+    ? S & { sessionType?: string; name?: string }
+    : any
+  : any;
+
 function getWeekInfo(dateInput: Date | string) {
   const d = new Date(dateInput);
   d.setHours(0, 0, 0, 0);
-  // Set to nearest Thursday: current date + 4 - current day number (Sunday = 7)
   d.setDate(d.getDate() + 4 - (d.getDay() || 7));
   const yearStart = new Date(d.getFullYear(), 0, 1);
   const weekNo = Math.ceil(
     ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
   );
 
-  // Get Monday of this week for display label
   const monday = new Date(dateInput);
   const day = monday.getDay();
   const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
@@ -38,7 +38,10 @@ function getWeekInfo(dateInput: Date | string) {
     month: "short",
     day: "numeric",
   };
-  const label = `${monday.toLocaleDateString(undefined, formatOpts)} – ${sunday.toLocaleDateString(undefined, formatOpts)}`;
+  const label = `${monday.toLocaleDateString(
+    undefined,
+    formatOpts
+  )} – ${sunday.toLocaleDateString(undefined, formatOpts)}`;
 
   return { weekKey: `${d.getFullYear()}-W${weekNo}`, label, monday };
 }
@@ -50,8 +53,9 @@ export default function WeeklySummaryPage() {
     null
   );
 
-  // Query all completed sessions from IndexedDB
-  const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
+  // Query all completed sessions from IndexedDB and safely type cast
+  const rawSessions = useLiveQuery(() => db.sessions.toArray()) || [];
+  const sessions = rawSessions as SessionLog[];
 
   // Group sessions by week dynamically
   const groupedWeeks = useMemo(() => {
@@ -61,11 +65,10 @@ export default function WeeklySummaryPage() {
         weekKey: string;
         label: string;
         mondayDate: Date;
-        sessions: typeof sessions;
+        sessions: SessionLog[];
       }
     > = {};
 
-    // Sort sessions newest first
     const sorted = [...sessions].sort(
       (a, b) =>
         new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
@@ -87,12 +90,11 @@ export default function WeeklySummaryPage() {
     return Object.values(map);
   }, [sessions]);
 
-  // Set default expanded week to latest on load
-  useMemo(() => {
+  useEffect(() => {
     if (groupedWeeks.length > 0 && !expandedWeek) {
       setExpandedWeek(groupedWeeks[0].weekKey);
     }
-  }, [groupedWeeks]);
+  }, [groupedWeeks, expandedWeek]);
 
   return (
     <div className="min-h-screen bg-[#F8F5F2] text-[#1A1817] p-4 md:p-8 pb-32 max-w-4xl mx-auto space-y-6">
@@ -132,14 +134,14 @@ export default function WeeklySummaryPage() {
           {groupedWeeks.map((week) => {
             const isExpanded = expandedWeek === week.weekKey;
 
-            // Calculate weekly totals
             let totalSets = 0;
             let totalReps = 0;
             let gymSessionCount = 0;
             let dailyHabitCount = 0;
 
             week.sessions.forEach((sess) => {
-              const isDailySess = sess.sessionType === "daily";
+              // Safe check for optional sessionType
+              const isDailySess = (sess as any).sessionType === "daily";
               if (isDailySess) dailyHabitCount++;
               else gymSessionCount++;
 
@@ -156,7 +158,7 @@ export default function WeeklySummaryPage() {
                 key={week.weekKey}
                 className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-3xl transition-all shadow-sm overflow-hidden"
               >
-                {/* Weekly Card Header (Click to Toggle Drill-Down) */}
+                {/* Weekly Card Header */}
                 <div
                   onClick={() =>
                     setExpandedWeek(isExpanded ? null : week.weekKey)
@@ -238,19 +240,21 @@ export default function WeeklySummaryPage() {
                           day: "numeric",
                         });
 
-                        const isDaily = sess.sessionType === "daily";
-                        const isDayExpanded = selectedDayDetail === sess.id;
+                        const isDaily = (sess as any).sessionType === "daily";
+                        const sessionName = (sess as any).name || "Gym Session";
+                        const sessionId = sess.id ? String(sess.id) : `sess-${idx}`;
+                        const isDayExpanded = selectedDayDetail === sessionId;
 
                         return (
                           <div
-                            key={sess.id || idx}
+                            key={sessionId}
                             className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl overflow-hidden transition-all shadow-2xs"
                           >
                             {/* Day Bar */}
                             <div
                               onClick={() =>
                                 setSelectedDayDetail(
-                                  isDayExpanded ? null : sess.id
+                                  isDayExpanded ? null : sessionId
                                 )
                               }
                               className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F2E8EA]/30 transition-colors"
@@ -272,9 +276,7 @@ export default function WeeklySummaryPage() {
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <h4 className="font-serif font-bold text-sm text-[#1A1817]">
-                                      {isDaily
-                                        ? "Daily Routine"
-                                        : sess.name || "Gym Session"}
+                                      {isDaily ? "Daily Routine" : sessionName}
                                     </h4>
                                     <span
                                       className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
@@ -299,11 +301,10 @@ export default function WeeklySummaryPage() {
                               />
                             </div>
 
-                            {/* Exercises Drill-Down for this specific Day */}
+                            {/* Exercises Drill-Down */}
                             {isDayExpanded && (
                               <div className="px-4 pb-4 pt-2 border-t border-[#EAE3DE]/60 bg-[#F8F5F2]/20 space-y-3">
                                 {sess.exercises?.map((ex: any, eIdx: number) => {
-                                  // Look up exercise metadata name
                                   const dbEx = EXERCISE_DATABASE.find(
                                     (item) => item.id === ex.exerciseId
                                   );
@@ -327,7 +328,6 @@ export default function WeeklySummaryPage() {
                                         </span>
                                       </div>
 
-                                      {/* Sets & Reps Table Grid */}
                                       <div className="grid grid-cols-3 gap-1.5 pt-1 text-[11px]">
                                         {ex.sets?.map(
                                           (set: any, sIdx: number) => (
