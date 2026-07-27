@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, X, ChevronRight, Dumbbell } from "lucide-react";
+import { Trophy, X, ChevronRight, Dumbbell, Loader2 } from "lucide-react";
 import { db } from "@/db/dexie";
 
 interface TargetExercise {
@@ -158,6 +158,15 @@ export default function MuscleMap() {
 
     calculateDevelopmentIndices();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-[28px] p-8 border border-[#EAE3DE] shadow-xs flex flex-col items-center justify-center space-y-3 min-h-[220px]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#6B2D3A]" />
+        <p className="text-xs font-mono text-[#8C7B75]">Analyzing muscle groups...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-[#EAE3DE] shadow-xs space-y-5">

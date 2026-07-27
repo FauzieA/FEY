@@ -112,12 +112,7 @@ function getLevelAndXp(totalXp: number) {
   return { level, xpInLevel, xpSpan, progressPercent };
 }
 
-// Convert attribute score (0 to 100% normalized) to Level (Lv1 to Lv10+)
-function scoreToLevel(score: number): number {
-  if (score >= 100) return 11;
-  if (score <= 10) return 1;
-  return Math.floor(score / 10) + 1;
-}
+
 
 export default function CharacterPage() {
   const [loading, setLoading] = useState(true);
@@ -152,7 +147,7 @@ export default function CharacterPage() {
   const [activeSkillTab, setActiveSkillTab] = useState<string>("Upper Body");
   const [skillTrees, setSkillTrees] = useState<SkillTreeGroup[]>([]);
   const [titles, setTitles] = useState<TitleItem[]>([]);
-  const [currentQuest, setCurrentQuest] = useState<QuestItem>({
+  const [currentQuest] = useState<QuestItem>({
     title: "First Floor Push-up",
     progressPercent: 0,
   });
