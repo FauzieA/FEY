@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/db/dexie";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import {
   ChevronLeft,
@@ -7,6 +8,7 @@ import {
   Circle,
   ChevronRight,
   Zap,
+  RotateCcw,
 } from "lucide-react";
 
 export default function ClassDayPage() {
@@ -14,15 +16,39 @@ export default function ClassDayPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get("category") || "all";
 
-  // Standalone completion state for on-demand sessions
-  const [completedToday, setCompletedToday] = useState<Record<string, boolean>>(
-    {},
-  );
+  // 🔄 LIVE QUERY: Read completed sessions directly from Dexie
+  const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
+
+  // Calculate completion counts per exercise ID
+  const exerciseCompletionCounts: Record<string, number> = {};
+  sessions.forEach((s) => {
+    s.exercises?.forEach((ex: any) => {
+      if (ex.exerciseId) {
+        exerciseCompletionCounts[ex.exerciseId] =
+          (exerciseCompletionCounts[ex.exerciseId] || 0) + 1;
+      }
+    });
+  });
+
+  // 🗑️ UNDO FUNCTION: Deletes the most recent session logged for this exercise
+  const handleUndoWorkout = async (e: React.MouseEvent, exerciseId: string) => {
+    e.stopPropagation(); // Prevents navigating to the workout session page
+
+    const targetSession = [...sessions]
+      .reverse()
+      .find((s) =>
+        s.exercises?.some((ex: any) => ex.exerciseId === exerciseId)
+      );
+
+    if (targetSession?.id) {
+      await db.sessions.delete(targetSession.id);
+    }
+  };
 
   const classDayExercises = EXERCISE_DATABASE.filter(
     (ex) =>
       ex.tier === "class_day" &&
-      (activeCategory === "all" || ex.category === activeCategory),
+      (activeCategory === "all" || ex.category === activeCategory)
   );
 
   const categories = ["all", "mobility", "balance"];
@@ -33,7 +59,7 @@ export default function ClassDayPage() {
       <header className="flex items-center justify-between pt-2">
         <button
           onClick={() => navigate("/workout")}
-          className="p-2 text-[#6B2D3A] hover:bg-[#F2E8EA]/50 rounded-full transition-colors"
+          className="p-2 text-[#6B2D3A] hover:bg-[#F2E8EA]/50 rounded-full transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -72,7 +98,7 @@ export default function ClassDayPage() {
           <button
             key={cat}
             onClick={() => setSearchParams({ category: cat })}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold capitalize whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold capitalize whitespace-nowrap transition-all cursor-pointer ${
               activeCategory === cat
                 ? "bg-[#6B2D3A] text-[#F8F5F2] shadow-sm"
                 : "bg-[#FFFCFA] border border-[#EAE3DE] text-[#8C7B75] hover:border-[#6B2D3A]"
@@ -86,9 +112,10 @@ export default function ClassDayPage() {
       {/* Exercise List */}
       <div className="space-y-3">
         {classDayExercises.map((ex) => {
-          const isDone = completedToday[ex.id] || false;
+          const currentCount = exerciseCompletionCounts[ex.id] || 0;
+          const isDone = currentCount > 0;
           const returnUrl = encodeURIComponent(
-            `/class-day?category=${activeCategory}`,
+            `/class-day?category=${activeCategory}`
           );
 
           return (
@@ -115,9 +142,19 @@ export default function ClassDayPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {isDone ? (
-                  <CheckCircle2 className="w-6 h-6 text-[#6B2D3A]" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handleUndoWorkout(e, ex.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#F2E8EA] hover:bg-[#E2CFD3] text-[#6B2D3A] text-xs font-semibold transition-colors cursor-pointer"
+                      title="Undo completed session"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Undo</span>
+                    </button>
+                    <CheckCircle2 className="w-6 h-6 text-[#6B2D3A]" />
+                  </div>
                 ) : (
                   <Circle className="w-6 h-6 text-[#D9B7BE]" />
                 )}

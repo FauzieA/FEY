@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
@@ -14,6 +14,9 @@ import {
   Pause,
   RotateCcw,
   Timer,
+  Trash2,
+  Square,
+  Sparkles,
 } from "lucide-react";
 
 export default function WorkoutPage() {
@@ -44,31 +47,41 @@ export default function WorkoutPage() {
     );
   }, [exercise.id, todayStr]);
 
-  const [sets, setSets] = useState([
-    {
-      setNum: 1,
+  // Initial sets setup
+  const [sets, setSets] = useState(() => {
+    const count = exercise.defaultSets || 3;
+    return Array.from({ length: count }, (_, i) => ({
+      setNum: i + 1,
       weightKg: exercise.defaultWeightKg || 0,
       reps: 10,
-      durationSec: exercise.defaultTimeSeconds || 60,
+      durationSec: exercise.defaultTimeSeconds || 10,
       completed: false,
-    },
-    {
-      setNum: 2,
-      weightKg: exercise.defaultWeightKg || 0,
-      reps: 10,
-      durationSec: exercise.defaultTimeSeconds || 60,
-      completed: false,
-    },
-    {
-      setNum: 3,
-      weightKg: exercise.defaultWeightKg || 0,
-      reps: 10,
-      durationSec: exercise.defaultTimeSeconds || 60,
-      completed: false,
-    },
-  ]);
+    }));
+  });
 
   const [notes, setNotes] = useState("Felt solid today. Kept good form.");
+
+  // Active Set Timer State
+  const [activeTimerIndex, setActiveTimerIndex] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [targetReachedSet, setTargetReachedSet] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Re-initialize sets if exerciseId changes and there's no existing log
+  useEffect(() => {
+    if (!existingLog) {
+      const count = exercise.defaultSets || 3;
+      setSets(
+        Array.from({ length: count }, (_, i) => ({
+          setNum: i + 1,
+          weightKg: exercise.defaultWeightKg || 0,
+          reps: 10,
+          durationSec: exercise.defaultTimeSeconds || 10,
+          completed: false,
+        }))
+      );
+    }
+  }, [exercise, existingLog]);
 
   // Sync state cleanly when existing database log is fetched
   useEffect(() => {
@@ -80,7 +93,7 @@ export default function WorkoutPage() {
     }
   }, [existingLog]);
 
-  // Rest Timer State
+  // Global Rest Timer State
   const [restSeconds, setRestSeconds] = useState(90);
   const [isRestActive, setIsRestActive] = useState(false);
 
@@ -94,6 +107,60 @@ export default function WorkoutPage() {
     return () => clearInterval(timer);
   }, [isRestActive, restSeconds]);
 
+  // Handle Count-up Timer for Time-Based Exercises
+  useEffect(() => {
+    if (activeTimerIndex !== null) {
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds((prev) => {
+          const next = prev + 1;
+          const target = sets[activeTimerIndex]?.durationSec || 10;
+
+          // Check if user reached target time
+          if (next === target) {
+            setTargetReachedSet(activeTimerIndex);
+            // Browser vibration if available
+            if ("vibrate" in navigator) {
+              navigator.vibrate([100, 50, 100]);
+            }
+          }
+          return next;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [activeTimerIndex, sets]);
+
+  const toggleSetTimer = (index: number) => {
+    if (activeTimerIndex === index) {
+      // STOP TIMER
+      if (timerRef.current) clearInterval(timerRef.current);
+
+      // Save actual performed duration into set state
+      const updated = [...sets];
+      updated[index].durationSec = elapsedSeconds > 0 ? elapsedSeconds : updated[index].durationSec;
+      updated[index].completed = true;
+      setSets(updated);
+
+      // Reset Active Timer
+      setActiveTimerIndex(null);
+      setElapsedSeconds(0);
+
+      // Trigger Rest Timer automatically
+      setRestSeconds(90);
+      setIsRestActive(true);
+    } else {
+      // START TIMER
+      setActiveTimerIndex(index);
+      setElapsedSeconds(0);
+      setTargetReachedSet(null);
+    }
+  };
+
   const toggleRestTimer = () => {
     if (restSeconds === 0) setRestSeconds(90);
     setIsRestActive((prev) => !prev);
@@ -104,12 +171,36 @@ export default function WorkoutPage() {
     setRestSeconds(90);
   };
 
+  const handleAddSet = () => {
+    setSets((prev) => {
+      const lastSet = prev[prev.length - 1];
+      return [
+        ...prev,
+        {
+          setNum: prev.length + 1,
+          weightKg: lastSet ? lastSet.weightKg : exercise.defaultWeightKg || 0,
+          reps: lastSet ? lastSet.reps : 10,
+          durationSec: lastSet ? lastSet.durationSec : exercise.defaultTimeSeconds || 10,
+          completed: false,
+        },
+      ];
+    });
+  };
+
+  const handleRemoveSet = (index: number) => {
+    if (sets.length <= 1) return;
+    setSets((prev) =>
+      prev
+        .filter((_, i) => i !== index)
+        .map((st, i) => ({ ...st, setNum: i + 1 }))
+    );
+  };
+
   const handleToggleSet = (index: number) => {
     const updated = [...sets];
     updated[index].completed = !updated[index].completed;
     setSets(updated);
 
-    // Auto trigger rest timer on set completion
     if (updated[index].completed) {
       setRestSeconds(90);
       setIsRestActive(true);
@@ -133,7 +224,6 @@ export default function WorkoutPage() {
         0,
       );
 
-      // Save session keeping exact set completion state
       const dateKey = new Date().toISOString().slice(0, 10);
       const sessionId = `session_${exercise.id}_${dateKey}`;
 
@@ -148,7 +238,7 @@ export default function WorkoutPage() {
           {
             exerciseId: exercise.id,
             exerciseName: exercise.name,
-            sets: sets, // Preserves true completed states
+            sets: sets,
             notes: notes,
           },
         ],
@@ -187,7 +277,7 @@ export default function WorkoutPage() {
             )}
           </div>
           <p className="text-[11px] sm:text-xs text-[#8C7B75] italic">
-            Target: {exercise.defaultSets} sets × {exercise.repRange}
+            Target: {exercise.defaultSets} sets × {exercise.type === "time" ? `${exercise.defaultTimeSeconds || 10}s hold` : exercise.repRange}
           </p>
         </div>
 
@@ -229,111 +319,176 @@ export default function WorkoutPage() {
         </div>
       </div>
 
-      {/* Exercise Specs */}
-      <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">
-            Exercise Tier & Category
-          </span>
-          <ChevronRight className="w-4 h-4 text-[#8C7B75]" />
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 border-t border-[#EAE3DE] pt-3 text-xs">
-          <div>
-            <span className="text-[#8C7B75] block text-[10px] uppercase font-bold">
-              Category
-            </span>
-            <span className="font-serif font-bold text-[#1A1817] capitalize">
-              {exercise.category?.replace("_", " ")}
-            </span>
-          </div>
-          <div>
-            <span className="text-[#8C7B75] block text-[10px] uppercase font-bold">
-              Tier
-            </span>
-            <span className="font-serif font-bold text-[#6B2D3A] capitalize">
-              {exercise.tier?.replace("_", " ")}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Sets Logging Table */}
       <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75] block">
-          SETS LOG
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75] block">
+            SETS LOG
+          </span>
+          <span className="text-xs text-[#8C7B75] font-serif">
+            {sets.length} {sets.length === 1 ? "Set" : "Sets"}
+          </span>
+        </div>
 
         <div className="space-y-3">
-          {sets.map((st, idx) => (
-            <div
-              key={st.setNum}
-              className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
-                st.completed
-                  ? "bg-[#F2E8EA]/60 border-[#6B2D3A] text-[#1A1817]"
-                  : "bg-[#F8F5F2] border-[#EAE3DE] text-[#1A1817]"
-              }`}
-            >
-              <span className="font-serif font-bold text-xs sm:text-sm shrink-0 w-12">
-                Set {st.setNum}
-              </span>
+          {sets.map((st, idx) => {
+            const isTimerRunning = activeTimerIndex === idx;
+            const isTargetReached = targetReachedSet === idx;
 
-              {/* Adjusters Flex Wrapper */}
-              <div className="flex items-center justify-center gap-2 sm:gap-4 flex-1 px-1">
-                {exercise.type === "weight_reps" && (
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <button
-                      onClick={() => handleUpdateSet(idx, "weightKg", -1)}
-                      className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="font-mono text-xs sm:text-sm font-bold min-w-[36px] text-center">
-                      {st.weightKg}kg
-                    </span>
-                    <button
-                      onClick={() => handleUpdateSet(idx, "weightKg", 1)}
-                      className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
+            return (
+              <div key={st.setNum} className="space-y-1">
+                {/* Target Reached Banner */}
+                {isTargetReached && isTimerRunning && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#6B2D3A] bg-[#F2E8EA] px-3 py-1 rounded-xl animate-bounce w-fit mx-auto shadow-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-[#6B2D3A]" />
+                    <span>Target reached! Keep going or tap Stop.</span>
                   </div>
                 )}
 
-                {exercise.type !== "time" && (
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <button
-                      onClick={() => handleUpdateSet(idx, "reps", -1)}
-                      className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="font-mono text-xs sm:text-sm font-bold min-w-[28px] text-center">
-                      {st.reps} reps
-                    </span>
-                    <button
-                      onClick={() => handleUpdateSet(idx, "reps", 1)}
-                      className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
+                <div
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                    st.completed
+                      ? "bg-[#F2E8EA]/60 border-[#6B2D3A] text-[#1A1817]"
+                      : isTimerRunning
+                      ? "bg-white border-[#6B2D3A] ring-2 ring-[#6B2D3A]/20 text-[#1A1817]"
+                      : "bg-[#F8F5F2] border-[#EAE3DE] text-[#1A1817]"
+                  }`}
+                >
+                  <span className="font-serif font-bold text-xs sm:text-sm shrink-0 w-12">
+                    Set {st.setNum}
+                  </span>
+
+                  {/* Adjusters Flex Wrapper */}
+                  <div className="flex items-center justify-center gap-2 sm:gap-4 flex-1 px-1">
+                    {/* Weight Control */}
+                    {exercise.type === "weight_reps" && (
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <button
+                          onClick={() => handleUpdateSet(idx, "weightKg", -1)}
+                          className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="font-mono text-xs sm:text-sm font-bold min-w-[36px] text-center">
+                          {st.weightKg}kg
+                        </span>
+                        <button
+                          onClick={() => handleUpdateSet(idx, "weightKg", 1)}
+                          className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Reps Control */}
+                    {exercise.type !== "time" && (
+                      <div className="flex items-center gap-1 sm:gap-1.5">
+                        <button
+                          onClick={() => handleUpdateSet(idx, "reps", -1)}
+                          className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="font-mono text-xs sm:text-sm font-bold min-w-[28px] text-center">
+                          {st.reps} reps
+                        </span>
+                        <button
+                          onClick={() => handleUpdateSet(idx, "reps", 1)}
+                          className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Time-Based Hold Controls & Timer */}
+                    {exercise.type === "time" && (
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        {!isTimerRunning && (
+                          <button
+                            onClick={() => handleUpdateSet(idx, "durationSec", -1)}
+                            className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        <span className="font-mono text-sm sm:text-base font-bold text-[#6B2D3A] min-w-[42px] text-center">
+                          {isTimerRunning ? `${elapsedSeconds}s` : `${st.durationSec}s`}
+                        </span>
+
+                        {!isTimerRunning && (
+                          <button
+                            onClick={() => handleUpdateSet(idx, "durationSec", 1)}
+                            className="w-7 h-7 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        {/* Start/Stop Set Timer Button */}
+                        <button
+                          onClick={() => toggleSetTimer(idx)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs ${
+                            isTimerRunning
+                              ? "bg-[#6B2D3A] text-white animate-pulse"
+                              : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#D9B7BE]/50"
+                          }`}
+                        >
+                          {isTimerRunning ? (
+                            <>
+                              <Square className="w-3.5 h-3.5 fill-current" />
+                              <span>Stop</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Start Hold</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Complete Toggle Checkbox & Delete Set */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleToggleSet(idx)}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        st.completed
+                          ? "bg-[#6B2D3A] text-white shadow-sm"
+                          : "border bg-white text-transparent"
+                      }`}
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    </button>
+
+                    {sets.length > 1 && (
+                      <button
+                        onClick={() => handleRemoveSet(idx)}
+                        className="p-1.5 text-[#8C7B75] hover:text-[#6B2D3A] transition-colors cursor-pointer"
+                        title="Remove Set"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {/* Complete Toggle Checkbox */}
-              <button
-                onClick={() => handleToggleSet(idx)}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer ${
-                  st.completed
-                    ? "bg-[#6B2D3A] text-white shadow-sm"
-                    : "border bg-white text-transparent"
-                }`}
-              >
-                <Check className="w-4 h-4 stroke-[3]" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Add Set Button */}
+        <button
+          onClick={handleAddSet}
+          className="w-full py-2.5 rounded-2xl border border-dashed border-[#D9B7BE] text-[#6B2D3A] hover:bg-[#F2E8EA]/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Set</span>
+        </button>
       </div>
 
       {/* Notes */}

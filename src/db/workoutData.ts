@@ -38,16 +38,19 @@ export const WEEKLY_CATEGORIES: WeeklyCategoryGoal[] = [
 ];
 
 export const EXERCISE_DATABASE: ExerciseDefinition[] = [
+
+// ===========================================================================
+  // PAGE 1: DAILY EXERCISES (Posture, Grip & Movement Skill Options)
   // ===========================================================================
-  // PAGE 1: DAILY EXERCISES (Resets Every Day)
-  // ===========================================================================
+  
+  // --- 1. CORE POSTURE (Required Daily) ---
   {
     id: 'day_chin_tuck',
     name: 'Chin Tucks',
     category: 'posture',
     tier: 'daily',
     defaultSets: 2,
-    repRange: '10-12',
+    repRange: '15 reps',
     primaryMuscles: ['Neck', 'Posture'],
     type: 'bodyweight_reps',
   },
@@ -57,28 +60,108 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     category: 'posture',
     tier: 'daily',
     defaultSets: 2,
-    repRange: '10-12',
+    repRange: '10-12 reps',
     primaryMuscles: ['Upper Back', 'Shoulders'],
     type: 'bodyweight_reps',
   },
+
+  // --- 2. GRIP OPTIONS (Choose 1 or More) ---
   {
-    id: 'day_pushup_prog',
-    name: 'Push-up Technique Practice',
-    category: 'skill',
+    id: 'day_farmer_carry',
+    name: 'Farmer Carry',
+    category: 'grip',
+    tier: 'daily',
+    defaultSets: 3,
+    repRange: '30s hold',
+    primaryMuscles: ['Grip', 'Core', 'Traps'],
+    type: 'time',
+    defaultTimeSeconds: 30,
+  },
+  {
+    id: 'day_plate_hold',
+    name: 'Plate Hold',
+    category: 'grip',
     tier: 'daily',
     defaultSets: 2,
-    repRange: '5-8 clean',
+    repRange: '30s hold',
+    primaryMuscles: ['Grip Strength'],
+    type: 'time',
+    defaultTimeSeconds: 30,
+  },
+  {
+    id: 'day_dead_hang',
+    name: 'Assisted Dead Hang',
+    category: 'grip',
+    tier: 'daily',
+    defaultSets: 2,
+    repRange: '10-20s hold',
+    primaryMuscles: ['Grip', 'Shoulders'],
+    type: 'time',
+    defaultTimeSeconds: 15,
+  },
+
+  // --- 3. MOVEMENT SKILL OPTIONS (Choose 1 or More) ---
+  {
+    id: 'day_plank_prog',
+    name: 'Plank Progression',
+    category: 'movement_skill',
+    tier: 'daily',
+    defaultSets: 3,
+    repRange: '30-60s hold',
+    primaryMuscles: ['Core Stability'],
+    type: 'time',
+    defaultTimeSeconds: 45,
+  },
+  {
+    id: 'day_pushup_prog',
+    name: 'Push-up Progression',
+    category: 'movement_skill',
+    tier: 'daily',
+    defaultSets: 3,
+    repRange: '8-12 reps',
     primaryMuscles: ['Chest', 'Core'],
     type: 'bodyweight_reps',
   },
   {
     id: 'day_pullup_tech',
     name: 'Pull-up Technique Practice',
-    category: 'skill',
+    category: 'movement_skill',
+    tier: 'daily',
+    defaultSets: 3,
+    repRange: '5 reps',
+    primaryMuscles: ['Back', 'Biceps'],
+    type: 'bodyweight_reps',
+  },
+  {
+    id: 'day_deep_squat',
+    name: 'Deep Squat Hold',
+    category: 'movement_skill',
     tier: 'daily',
     defaultSets: 2,
-    repRange: '3-5 reps / hold',
-    primaryMuscles: ['Back', 'Biceps'],
+    repRange: '45s hold',
+    primaryMuscles: ['Hips', 'Ankles'],
+    type: 'time',
+    defaultTimeSeconds: 45,
+  },
+  {
+    id: 'day_single_leg_bal',
+    name: 'Single-Leg Balance Practice',
+    category: 'movement_skill',
+    tier: 'daily',
+    defaultSets: 2,
+    repRange: '30s / side',
+    primaryMuscles: ['Ankle Stabilizers', 'Glutes'],
+    type: 'time',
+    defaultTimeSeconds: 30,
+  },
+  {
+    id: 'day_floor_stand',
+    name: 'Floor Stand Practice',
+    category: 'movement_skill',
+    tier: 'daily',
+    defaultSets: 2,
+    repRange: '5-10 reps',
+    primaryMuscles: ['Full Body', 'Mobility'],
     type: 'bodyweight_reps',
   },
 
@@ -162,7 +245,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
   // UPPER PUSH
   {
     id: 'up_db_bench',
-    name: 'Dumbbell Bench Press',
+    name: 'Incline Bench Press',
     category: 'upper_push',
     tier: 'weekly',
     defaultSets: 3,

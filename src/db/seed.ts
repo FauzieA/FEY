@@ -3,15 +3,16 @@ import { db } from "./dexie";
 export async function initializeDatabase() {
   const existingChar = await db.character.get("user");
 
+  // Only run if the database has not been initialized yet
   if (!existingChar) {
-    // Initial Character Profile
+    // 1. Initial Character Profile
     await db.character.put({
       id: "user",
       level: 1,
       currentXp: 0,
       nextLevelXp: 1000,
       currentStreak: 0,
-      lastWorkoutDate: null,
+      lastWorkoutDate: undefined,
       attributes: {
         STR: 10,
         END: 10,
@@ -20,7 +21,7 @@ export async function initializeDatabase() {
       },
     });
 
-    // Default App Settings
+    // 2. Default App Settings
     await db.settings.put({
       id: "app_settings",
       defaultRestSeconds: 90,
@@ -28,7 +29,7 @@ export async function initializeDatabase() {
       vibrationEnabled: true,
     });
 
-    // Default 7-Day Workout Split
+    // 3. Default Workout Plans (Preset templates using valid exercise IDs)
     await db.plans.bulkPut([
       {
         id: "plan_mon",
@@ -36,24 +37,8 @@ export async function initializeDatabase() {
         dayOfWeek: 1,
         targetMuscles: ["Chest", "Triceps"],
         exercises: [
-          {
-            exerciseId: "bench_press",
-            exerciseName: "Barbell Bench Press",
-            targetSets: 4,
-            targetReps: 8,
-          },
-          {
-            exerciseId: "incline_db_press",
-            exerciseName: "Incline Dumbbell Press",
-            targetSets: 3,
-            targetReps: 10,
-          },
-          {
-            exerciseId: "tricep_pushdown",
-            exerciseName: "Cable Tricep Pushdown",
-            targetSets: 3,
-            targetReps: 12,
-          },
+          { exerciseId: "ex_dumbbell_bench", exerciseName: "Dumbbell Bench Press", targetSets: 4, targetReps: 8 },
+          { exerciseId: "ex_shoulder_press", exerciseName: "Shoulder Press", targetSets: 3, targetReps: 10 },
         ],
       },
       {
@@ -62,99 +47,19 @@ export async function initializeDatabase() {
         dayOfWeek: 2,
         targetMuscles: ["Back", "Biceps"],
         exercises: [
-          {
-            exerciseId: "lat_pulldown",
-            exerciseName: "Lat Pulldown",
-            targetSets: 4,
-            targetReps: 10,
-          },
-          {
-            exerciseId: "bent_over_row",
-            exerciseName: "Barbell Bent Over Row",
-            targetSets: 3,
-            targetReps: 8,
-          },
-          {
-            exerciseId: "bicep_curl",
-            exerciseName: "Dumbbell Bicep Curl",
-            targetSets: 3,
-            targetReps: 12,
-          },
-        ],
-      },
-      {
-        id: "plan_wed",
-        title: "Active Recovery & Mobility",
-        dayOfWeek: 3,
-        targetMuscles: ["Core", "Mobility"],
-        exercises: [
-          {
-            exerciseId: "plank",
-            exerciseName: "Plank Hold",
-            targetSets: 3,
-            targetReps: 60,
-          },
+          { exerciseId: "ex_lat_pulldown", exerciseName: "Lat Pulldown", targetSets: 4, targetReps: 10 },
+          { exerciseId: "ex_seated_row", exerciseName: "Seated Row", targetSets: 3, targetReps: 8 },
         ],
       },
       {
         id: "plan_thu",
-        title: "Legs & Shoulders Focus",
+        title: "Legs & Lower Focus",
         dayOfWeek: 4,
-        targetMuscles: ["Quads", "Hamstrings", "Shoulders"],
+        targetMuscles: ["Quads", "Hamstrings"],
         exercises: [
-          {
-            exerciseId: "barbell_squat",
-            exerciseName: "Barbell Squat",
-            targetSets: 4,
-            targetReps: 8,
-          },
-          {
-            exerciseId: "overhead_press",
-            exerciseName: "Overhead Press",
-            targetSets: 3,
-            targetReps: 8,
-          },
-          {
-            exerciseId: "leg_curl",
-            exerciseName: "Lying Leg Curl",
-            targetSets: 3,
-            targetReps: 12,
-          },
+          { exerciseId: "ex_back_squat", exerciseName: "Back Squat", targetSets: 4, targetReps: 8 },
+          { exerciseId: "ex_romanian_deadlift", exerciseName: "Romanian Deadlift", targetSets: 3, targetReps: 8 },
         ],
-      },
-      {
-        id: "plan_fri",
-        title: "Full Body Power",
-        dayOfWeek: 5,
-        targetMuscles: ["Full Body"],
-        exercises: [
-          {
-            exerciseId: "deadlift",
-            exerciseName: "Barbell Deadlift",
-            targetSets: 3,
-            targetReps: 5,
-          },
-          {
-            exerciseId: "pushups",
-            exerciseName: "Weighted Pushups",
-            targetSets: 3,
-            targetReps: 15,
-          },
-        ],
-      },
-      {
-        id: "plan_sat",
-        title: "Cardio & Conditioning",
-        dayOfWeek: 6,
-        targetMuscles: ["Cardio", "Endurance"],
-        exercises: [],
-      },
-      {
-        id: "plan_sun",
-        title: "Rest & Regeneration",
-        dayOfWeek: 7,
-        targetMuscles: ["Rest"],
-        exercises: [],
       },
     ]);
   }

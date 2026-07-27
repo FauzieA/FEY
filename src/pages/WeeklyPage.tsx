@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/db/dexie";
 import { EXERCISE_DATABASE, WEEKLY_CATEGORIES } from "@/db/workoutData";
 import {
   ChevronLeft,
@@ -7,6 +8,7 @@ import {
   Circle,
   ChevronRight,
   Dumbbell,
+  RotateCcw,
 } from "lucide-react";
 
 export default function WeeklyPage() {
@@ -14,18 +16,40 @@ export default function WeeklyPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get("category") || "all";
 
-  // Simulated weekly completion counts
-  const [weeklyCompletedCounts, setWeeklyCompletedCounts] = useState<
-    Record<string, number>
-  >({
-    lb_squat: 1,
-    ca_cable_crunch: 1,
+  // 🔄 LIVE QUERY: Read sessions directly from Dexie
+  const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
+
+  // Calculate completion counts per exercise ID
+  const exerciseCompletionCounts: Record<string, number> = {};
+  sessions.forEach((s) => {
+    s.exercises?.forEach((ex: any) => {
+      if (ex.exerciseId) {
+        exerciseCompletionCounts[ex.exerciseId] =
+          (exerciseCompletionCounts[ex.exerciseId] || 0) + 1;
+      }
+    });
   });
+
+  // 🗑️ UNDO FUNCTION: Deletes the most recent session for this specific exercise
+  const handleUndoWorkout = async (e: React.MouseEvent, exerciseId: string) => {
+    e.stopPropagation(); // Prevents navigating to the workout session page
+
+    // Find the latest session containing this exercise
+    const targetSession = [...sessions]
+      .reverse()
+      .find((s) =>
+        s.exercises?.some((ex: any) => ex.exerciseId === exerciseId)
+      );
+
+    if (targetSession?.id) {
+      await db.sessions.delete(targetSession.id);
+    }
+  };
 
   const weeklyExercises = EXERCISE_DATABASE.filter(
     (ex) =>
       ex.tier === "weekly" &&
-      (activeCategory === "all" || ex.category === activeCategory),
+      (activeCategory === "all" || ex.category === activeCategory)
   );
 
   const categoryTabs = [
@@ -35,11 +59,10 @@ export default function WeeklyPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F5F2] text-[#1A1817] p-4 md:p-8 pb-32 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
       <header className="flex items-center justify-between pt-2">
         <button
           onClick={() => navigate("/workout")}
-          className="p-2 text-[#6B2D3A] hover:bg-[#F2E8EA]/50 rounded-full transition-colors"
+          className="p-2 text-[#6B2D3A] hover:bg-[#F2E8EA]/50 rounded-full transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -75,7 +98,7 @@ export default function WeeklyPage() {
           <button
             key={cat.id}
             onClick={() => setSearchParams({ category: cat.id })}
-            className={`px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               activeCategory === cat.id
                 ? "bg-[#6B2D3A] text-[#F8F5F2] shadow-sm"
                 : "bg-[#FFFCFA] border border-[#EAE3DE] text-[#8C7B75] hover:border-[#6B2D3A]"
@@ -89,11 +112,11 @@ export default function WeeklyPage() {
       {/* Exercise Cards */}
       <div className="space-y-3">
         {weeklyExercises.map((ex) => {
-          const currentCount = weeklyCompletedCounts[ex.id] || 0;
+          const currentCount = exerciseCompletionCounts[ex.id] || 0;
           const target = ex.requiredPerWeek || 1;
           const isDone = currentCount >= target;
           const returnUrl = encodeURIComponent(
-            `/weekly?category=${activeCategory}`,
+            `/weekly?category=${activeCategory}`
           );
 
           return (
@@ -117,20 +140,22 @@ export default function WeeklyPage() {
                   <span>{ex.defaultSets} sets</span>
                   <span>•</span>
                   <span>{ex.repRange}</span>
-                  {ex.defaultWeightKg && (
-                    <>
-                      <span>•</span>
-                      <span className="font-mono text-[#6B2D3A]">
-                        {ex.defaultWeightKg} kg
-                      </span>
-                    </>
-                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {isDone ? (
-                  <CheckCircle2 className="w-6 h-6 text-[#6B2D3A]" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => handleUndoWorkout(e, ex.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#F2E8EA] hover:bg-[#E2CFD3] text-[#6B2D3A] text-xs font-semibold transition-colors cursor-pointer"
+                      title="Undo completed session"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Undo</span>
+                    </button>
+                    <CheckCircle2 className="w-6 h-6 text-[#6B2D3A]" />
+                  </div>
                 ) : (
                   <Circle className="w-6 h-6 text-[#D9B7BE]" />
                 )}
