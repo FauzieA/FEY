@@ -4,7 +4,8 @@ import DashboardPage from "@/pages/DashboardPage";
 import WorkoutHubPage from "@/pages/WorkoutHubPage.tsx";
 import WorkoutPage from "@/pages/WorkoutPage";
 import WeeklySummaryPage from "@/pages/WeeklySummaryPage";
-import ProgressPage from "@/pages/ProgressPage";
+//import ProgressPage from "@/pages/ProgressPage";
+import EvolutionPage from "@/pages/EvolutionPage"
 import CharacterPage from "@/pages/CharacterPage";
 import { BottomNav } from "@/components/common/BottomNav";
 import DailyPage from "./pages/DailyPage";
@@ -37,7 +38,7 @@ export default function App() {
         <Route path="history" element={<WeeklySummaryPage />} />
 
         {/* Secondary Pages */}
-        <Route path="progress" element={<ProgressPage />} />
+        <Route path="evolution" element={<EvolutionPage />} />
         <Route path="character" element={<CharacterPage />} />
       </Routes>
       <BottomNav />

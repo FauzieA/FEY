@@ -97,7 +97,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     repRange: '10-20s hold',
     primaryMuscles: ['Grip', 'Shoulders'],
     type: 'time',
-    defaultTimeSeconds: 15,
+    defaultTimeSeconds: 10,
   },
 
   // --- 3. MOVEMENT SKILL OPTIONS (Choose 1 or More) ---
@@ -110,7 +110,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     repRange: '30-60s hold',
     primaryMuscles: ['Core Stability'],
     type: 'time',
-    defaultTimeSeconds: 45,
+    defaultTimeSeconds: 30,
   },
   {
     id: 'day_pushup_prog',
@@ -179,7 +179,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Quads', 'Glutes'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 45,
+    defaultWeightKg: 15,
   },
   {
     id: 'lb_hip_thrust',
@@ -191,7 +191,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Glutes', 'Hamstrings'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 60,
+    defaultWeightKg: 20,
   },
   {
     id: 'lb_rdl',
@@ -203,7 +203,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Hamstrings', 'Glutes'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 40,
+    defaultWeightKg: 7.5,
   },
   {
     id: 'lb_leg_curl',
@@ -215,7 +215,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Hamstrings'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 25,
+    defaultWeightKg: 15,
   },
   {
     id: 'lb_adductor',
@@ -227,7 +227,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Inner Thighs'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 35,
+    defaultWeightKg: 7.5,
   },
   {
     id: 'lb_calf_raise',
@@ -239,7 +239,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Calves'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 30,
+    defaultWeightKg: 7.5,
   },
 
   // UPPER PUSH
@@ -265,7 +265,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Shoulders', 'Triceps'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 10,
+    defaultWeightKg: 5,
   },
   {
     id: 'up_lat_raise',
@@ -277,7 +277,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Side Delts'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 6,
+    defaultWeightKg: 2.5,
   },
   {
     id: 'up_tricep_pushdown',
@@ -289,7 +289,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Triceps'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 17.5,
+    defaultWeightKg: 10,
   },
   {
     id: 'up_incline_pushup',
@@ -315,7 +315,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     type: 'weight_reps',
     requiredPerWeek: 1,
     isAssisted: true,
-    defaultWeightKg: 15,
+    defaultWeightKg: 92,
   },
   {
     id: 'upl_assisted_chinup',
@@ -328,7 +328,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     type: 'weight_reps',
     requiredPerWeek: 1,
     isAssisted: true,
-    defaultWeightKg: 15,
+    defaultWeightKg: 92,
   },
   {
     id: 'upl_lat_pulldown',
@@ -340,7 +340,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Upper Back', 'Lats'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 35,
+    defaultWeightKg: 15,
   },
   {
     id: 'upl_seated_row',
@@ -352,7 +352,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Mid Back', 'Rhomboids'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 30,
+    defaultWeightKg: 20,
   },
   {
     id: 'upl_rear_delt',
@@ -364,7 +364,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Rear Delts'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 5,
+    defaultWeightKg: 10,
   },
   {
     id: 'upl_face_pull',
@@ -376,7 +376,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Posture', 'Rear Delts'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 12.5,
+    defaultWeightKg: 15,
   },
   {
     id: 'upl_hammer_curl',
@@ -388,7 +388,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Biceps', 'Forearms'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 8,
+    defaultWeightKg: 5,
   },
 
   // FULL BODY
@@ -402,7 +402,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Quads', 'Core'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 16,
+    defaultWeightKg: 7.5,
   },
   {
     id: 'fb_kb_swing',
@@ -414,7 +414,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Glutes', 'Posterior Chain'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 12,
+    defaultWeightKg: 15,
   },
   {
     id: 'fb_farmer_carry',
@@ -426,7 +426,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Grip', 'Core', 'Traps'],
     type: 'distance',
     requiredPerWeek: 1,
-    defaultWeightKg: 16,
+    defaultWeightKg: 12.5,
   },
   {
     id: 'fb_suitcase_carry',
@@ -438,7 +438,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Obliques', 'Grip'],
     type: 'distance',
     requiredPerWeek: 1,
-    defaultWeightKg: 12,
+    defaultWeightKg: 12.5,
   },
 
   // CORE A & B
@@ -452,7 +452,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Abs'],
     type: 'weight_reps',
     requiredPerWeek: 1,
-    defaultWeightKg: 20,
+    defaultWeightKg: 30,
   },
   {
     id: 'ca_leg_raise',
@@ -497,7 +497,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Core Stability'],
     type: 'time',
     requiredPerWeek: 1,
-    defaultTimeSeconds: 60,
+    defaultTimeSeconds: 30,
   },
   {
     id: 'cb_side_leg_lowers',
@@ -545,7 +545,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     primaryMuscles: ['Grip', 'Shoulders'],
     type: 'time',
     requiredPerWeek: 1,
-    defaultTimeSeconds: 45,
+    defaultTimeSeconds: 10,
   },
   {
     id: 'hab_plate_hold',
@@ -572,7 +572,7 @@ export const EXERCISE_DATABASE: ExerciseDefinition[] = [
     repRange: '60s hold',
     primaryMuscles: ['Hips', 'Ankles', 'Pelvic Floor'],
     type: 'time',
-    defaultTimeSeconds: 60,
+    defaultTimeSeconds: 30,
   },
   {
     id: 'mob_ankle_rocks',

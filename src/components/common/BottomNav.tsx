@@ -15,7 +15,7 @@ export function BottomNav() {
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Workout", path: "/workout", icon: Dumbbell },
     { label: "History", path: "/history", icon: History },
-    { label: "Progress", path: "/progress", icon: LineChart },
+    { label: "Evolution", path: "/evolution", icon: LineChart },
     { label: "Character", path: "/character", icon: User },
   ];
 
