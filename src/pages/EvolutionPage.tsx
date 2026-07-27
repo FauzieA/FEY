@@ -4,11 +4,10 @@ import { useNavigate } from "react-router-dom";
 
 // Evolution Components
 import HeroOverview from "@/components/evolution/HeroOverview";
-import SkillProgress from "@/components/evolution/SkillProgress";
 import MuscleMap from "@/components/evolution/MuscleMap";
 import PerformanceTrends from "@/components/evolution/PerformanceTrends";
-import Predictions from "@/components/evolution/Predictions";
-import MilestoneTimeline from "@/components/evolution/MilestoneTimeline";
+
+
 
 type TimeFilter = "30D" | "3M" | "1Y" | "ALL";
 
@@ -62,21 +61,6 @@ export default function EvolutionPage() {
           <HeroOverview timeFilter={timeFilter} />
         </section>
 
-        {/* 2. SKILL PROGRESSION TREES */}
-        <section>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#8C7B75]">
-              Skill & Body Control Milestones
-            </h2>
-            <button className="text-xs text-[#6B2D3A] hover:underline font-semibold cursor-pointer">
-              View All Skills &rsaquo;
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <SkillProgress />
-          </div>
-        </section>
-
         {/* 3. ANATOMICAL HEATMAP & MUSCLE DEVELOPMENT */}
         <section>
           <MuscleMap />
@@ -87,15 +71,8 @@ export default function EvolutionPage() {
           <PerformanceTrends />
         </section>
 
-        {/* 5. MILESTONE HORIZON (Predictions) */}
-        <section>
-          <Predictions />
-        </section>
+      
 
-        {/* 6. PROOF LOG & BREAKTHROUGHS */}
-        <section>
-          <MilestoneTimeline />
-        </section>
 
       </main>
     </div>

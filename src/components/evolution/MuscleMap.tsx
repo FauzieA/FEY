@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, X, ChevronRight, Dumbbell } from "lucide-react";
 import { db } from "@/db/dexie";
 
 interface TargetExercise {
@@ -88,7 +88,7 @@ interface ProcessedGroup extends MuscleGroupConfig {
 
 export default function MuscleMap() {
   const [processedGroups, setProcessedGroups] = useState<ProcessedGroup[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<ProcessedGroup | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -159,97 +159,137 @@ export default function MuscleMap() {
     calculateDevelopmentIndices();
   }, []);
 
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
   return (
-    <div className="bg-white rounded-[24px] p-4 sm:p-6 border border-[#EAE3DE] shadow-xs space-y-4">
+    <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-[#EAE3DE] shadow-xs space-y-5">
       {/* HEADER */}
-      <div className="border-b border-[#F8F5F2] pb-3">
-        <h2 className="font-serif font-bold text-base sm:text-lg text-[#1A1817]">
-          Muscle Development Map
-        </h2>
-        <span className="text-[11px] font-mono text-[#8C7B75]">
-          Advanced Recreational Goal Progress
-        </span>
+      <div className="flex items-center justify-between border-b border-[#F8F5F2] pb-4">
+        <div>
+          <h2 className="font-serif font-bold text-lg text-[#1A1817]">
+            Muscle Development Map
+          </h2>
+          <p className="text-xs text-[#8C7B75] mt-0.5">
+            Tap any region to inspect exercise breakdown
+          </p>
+        </div>
+        <div className="w-9 h-9 rounded-2xl bg-[#FAF8F6] border border-[#EAE3DE] flex items-center justify-center text-[#6B2D3A]">
+          <Dumbbell className="w-4 h-4" />
+        </div>
       </div>
 
-      {/* UNIFIED MUSCLE LIST WITH ACCORDION EXPANSION */}
-      <div className="space-y-2.5">
+      {/* GRID CARD LAYOUT */}
+      <div className="grid grid-cols-2 gap-3">
         {processedGroups.map((group) => {
-          const isExpanded = expandedId === group.id;
-
           return (
             <div
               key={group.id}
-              className="bg-[#FAF8F6] border border-[#EAE3DE] rounded-2xl overflow-hidden transition-all shadow-2xs"
+              onClick={() => setSelectedGroup(group)}
+              className="bg-[#FAF8F6] border border-[#EAE3DE] hover:border-[#D9B7BE] rounded-2xl p-4 flex flex-col justify-between transition-all cursor-pointer group shadow-2xs hover:shadow-xs"
             >
-              {/* ACCORDION HEADER (CLICK TO EXPAND) */}
-              <div
-                onClick={() => toggleExpand(group.id)}
-                className="p-3.5 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-[#F2ECE6] transition-colors"
-              >
-                <div>
-                  <h3 className="font-serif font-bold text-sm sm:text-base text-[#1A1817]">
-                    {group.name}
-                  </h3>
-                  <span className="text-[10px] font-mono text-[#8C7B75]">
-                    {group.contributors.length} Exercises Tracked
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="font-mono font-bold text-sm sm:text-base text-[#6B2D3A]">
-                    {group.developmentIndex}%
-                  </span>
-                  <div className="w-6 h-6 rounded-full bg-white border border-[#EAE3DE] flex items-center justify-center text-[#6B2D3A]">
-                    {isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </div>
-                </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75]">
+                  {group.contributors.length} Exercises
+                </span>
+                <h3 className="font-serif font-bold text-sm sm:text-base text-[#1A1817] group-hover:text-[#6B2D3A] transition-colors line-clamp-1">
+                  {group.name}
+                </h3>
               </div>
 
-              {/* EXPANDABLE CONTRIBUTORS BREAKDOWN */}
-              {isExpanded && (
-                <div className="bg-white border-t border-[#EAE3DE] p-3.5 sm:p-4 space-y-3">
-                  <div className="flex items-center gap-1.5 pb-1">
-                    <Trophy className="w-3.5 h-3.5 text-[#6B2D3A]" />
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-                      Exercise Contributors Breakdown
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {group.contributors.map((item, idx) => (
-                      <div key={idx} className="bg-[#FAF8F6] border border-[#EAE3DE] p-2.5 rounded-xl space-y-1">
-                        <div className="flex justify-between text-xs font-medium text-[#1A1817]">
-                          <span>{item.name}</span>
-                          <span className="font-mono font-bold text-[#6B2D3A]">{item.progressPct}%</span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="w-full bg-white h-1.5 rounded-full overflow-hidden border border-[#EAE3DE]">
-                          <div
-                            className="bg-[#6B2D3A] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${item.progressPct}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-mono text-[#8C7B75]">
-                          <span>Logged Best: {item.current} {item.unit}</span>
-                          <span>Target: {item.target} {item.unit}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              <div className="flex items-end justify-between pt-4 mt-2 border-t border-[#EAE3DE]/60">
+                <div>
+                  <span className="text-[10px] font-mono text-[#8C7B75] block">Progress</span>
+                  <span className="font-mono font-bold text-base sm:text-lg text-[#6B2D3A]">
+                    {group.developmentIndex}%
+                  </span>
                 </div>
-              )}
+                <div className="w-7 h-7 rounded-xl bg-white border border-[#EAE3DE] flex items-center justify-center text-[#8C7B75] group-hover:bg-[#6B2D3A] group-hover:text-white group-hover:border-[#6B2D3A] transition-all">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* POPUP / MODAL FOR SELECTED MUSCLE GROUP DETAILS */}
+      {selectedGroup && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[28px] p-6 space-y-5 max-h-[85vh] overflow-y-auto shadow-xl border border-[#EAE3DE]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#F8F5F2] pb-4">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
+                  Detailed Breakdown
+                </span>
+                <h3 className="font-serif font-bold text-xl text-[#1A1817]">
+                  {selectedGroup.name}
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setSelectedGroup(null)}
+                className="w-8 h-8 rounded-full bg-[#FAF8F6] border border-[#EAE3DE] flex items-center justify-center text-[#1A1817] hover:bg-[#F2ECE6] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Overall Score Badge in Modal */}
+            <div className="bg-[#FAF8F6] border border-[#EAE3DE] rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#6B2D3A]/10 text-[#6B2D3A] flex items-center justify-center">
+                  <Trophy className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-[#1A1817] block">Development Index</span>
+                  <span className="text-[10px] font-mono text-[#8C7B75]">Advanced Recreational Goal</span>
+                </div>
+              </div>
+              <span className="font-mono font-bold text-xl text-[#6B2D3A]">
+                {selectedGroup.developmentIndex}%
+              </span>
+            </div>
+
+            {/* Contributors List */}
+            <div className="space-y-3">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
+                Exercise Contributors & Targets
+              </span>
+
+              <div className="space-y-2.5">
+                {selectedGroup.contributors.map((item, idx) => (
+                  <div key={idx} className="bg-[#FAF8F6] border border-[#EAE3DE] p-3 rounded-2xl space-y-1.5">
+                    <div className="flex justify-between text-xs font-medium text-[#1A1817]">
+                      <span>{item.name}</span>
+                      <span className="font-mono font-bold text-[#6B2D3A]">{item.progressPct}%</span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-white h-2 rounded-full overflow-hidden border border-[#EAE3DE]">
+                      <div
+                        className="bg-[#6B2D3A] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${item.progressPct}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="flex justify-between text-[10px] font-mono text-[#8C7B75] pt-0.5">
+                      <span>Logged Best: {item.current} {item.unit}</span>
+                      <span>Target: {item.target} {item.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Close Button for Mobile */}
+            <button
+              onClick={() => setSelectedGroup(null)}
+              className="w-full py-3 bg-[#6B2D3A] text-white rounded-2xl font-serif font-bold text-sm tracking-wide shadow-xs cursor-pointer hover:bg-[#59242F] transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
