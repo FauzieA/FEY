@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/dexie";
@@ -18,9 +18,18 @@ import {
 export default function DailyPage() {
   const navigate = useNavigate();
   const todayStr = new Date().toDateString();
+  const storageKey = `fey_daily_selected_ids_${new Date().toDateString()}`;
 
-  // Selected exercise IDs for today's workout plan
+  // Selected exercise IDs for today's workout plan (persisted in localStorage)
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
     return [
       "day_chin_tuck",
       "day_wall_angels",
@@ -29,7 +38,12 @@ export default function DailyPage() {
     ];
   });
 
-  //  LIVE QUERY: Read completed sessions from Dexie
+  // Save changes to localStorage whenever selectedIds changes
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(selectedIds));
+  }, [selectedIds, storageKey]);
+
+  // LIVE QUERY: Read completed sessions from Dexie
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
 
   const todayCompletedIds = new Set<string>();

@@ -2,13 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/dexie";
-import { EXERCISE_DATABASE } from "@/db/workoutData";
-import {
-  ChevronLeft,
-  Calendar,
-  ChevronDown,
-  CheckCircle2,
-} from "lucide-react";
+import { ChevronLeft, Calendar } from "lucide-react";
+import WeeklyCard from "@/components/history/WeeklyCard";
 
 // Helper type extension for safe optional property checks
 type SessionLog = typeof db.sessions extends { toArray: () => Promise<infer U> }
@@ -134,232 +129,17 @@ export default function WeeklySummaryPage() {
           {groupedWeeks.map((week) => {
             const isExpanded = expandedWeek === week.weekKey;
 
-            let totalSets = 0;
-            let totalReps = 0;
-            let gymSessionCount = 0;
-            let dailyHabitCount = 0;
-
-            week.sessions.forEach((sess) => {
-              // Safe check for optional sessionType
-              const isDailySess = (sess as any).sessionType === "daily";
-              if (isDailySess) dailyHabitCount++;
-              else gymSessionCount++;
-
-              sess.exercises?.forEach((ex: any) => {
-                ex.sets?.forEach((s: any) => {
-                  totalSets++;
-                  totalReps += Number(s.reps) || 0;
-                });
-              });
-            });
-
             return (
-              <div
+              <WeeklyCard
                 key={week.weekKey}
-                className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-3xl transition-all shadow-sm overflow-hidden"
-              >
-                {/* Weekly Card Header */}
-                <div
-                  onClick={() =>
-                    setExpandedWeek(isExpanded ? null : week.weekKey)
-                  }
-                  className="p-5 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#F8F5F2]/50 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">
-                        Week Log
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#F2E8EA] text-[#6B2D3A] font-bold">
-                        {week.weekKey}
-                      </span>
-                    </div>
-                    <h2 className="font-serif font-bold text-lg text-[#1A1817] flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-[#6B2D3A]" />
-                      <span>{week.label}</span>
-                    </h2>
-                  </div>
-
-                  {/* Summary Metric Pills */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EAE3DE]">
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="bg-[#F8F5F2] px-2.5 py-1.5 rounded-xl border border-[#EAE3DE]">
-                        <span className="block text-[9px] uppercase text-[#8C7B75] font-bold">
-                          Gym
-                        </span>
-                        <span className="font-serif font-bold text-xs text-[#6B2D3A]">
-                          {gymSessionCount}
-                        </span>
-                      </div>
-                      <div className="bg-[#F8F5F2] px-2.5 py-1.5 rounded-xl border border-[#EAE3DE]">
-                        <span className="block text-[9px] uppercase text-[#8C7B75] font-bold">
-                          Daily
-                        </span>
-                        <span className="font-serif font-bold text-xs text-[#6B2D3A]">
-                          {dailyHabitCount}
-                        </span>
-                      </div>
-                      <div className="bg-[#F8F5F2] px-2.5 py-1.5 rounded-xl border border-[#EAE3DE]">
-                        <span className="block text-[9px] uppercase text-[#8C7B75] font-bold">
-                          Volume
-                        </span>
-                        <span className="font-serif font-bold text-xs text-[#1A1817]">
-                          {totalSets}s / {totalReps}r
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-1.5 rounded-full bg-[#F2E8EA] text-[#6B2D3A] transition-transform duration-300 ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Collapsible Daily Breakdown View */}
-                {isExpanded && (
-                  <div className="border-t border-[#EAE3DE] bg-[#F8F5F2]/40 p-4 md:p-6 space-y-4">
-                    <div className="flex items-center justify-between text-xs text-[#8C7B75] border-b border-[#EAE3DE] pb-2">
-                      <span className="font-bold uppercase tracking-wider text-[10px]">
-                        Logged Days Breakdown
-                      </span>
-                      <span>{week.sessions.length} sessions logged</span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {week.sessions.map((sess, idx) => {
-                        const dateObj = new Date(sess.completedAt);
-                        const dayName = dateObj.toLocaleDateString(undefined, {
-                          weekday: "short",
-                        });
-                        const dateNum = dateObj.toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        });
-
-                        const isDaily = (sess as any).sessionType === "daily";
-                        const sessionName = (sess as any).name || "Gym Session";
-                        const sessionId = sess.id ? String(sess.id) : `sess-${idx}`;
-                        const isDayExpanded = selectedDayDetail === sessionId;
-
-                        return (
-                          <div
-                            key={sessionId}
-                            className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl overflow-hidden transition-all shadow-2xs"
-                          >
-                            {/* Day Bar */}
-                            <div
-                              onClick={() =>
-                                setSelectedDayDetail(
-                                  isDayExpanded ? null : sessionId
-                                )
-                              }
-                              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F2E8EA]/30 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={`p-2 rounded-xl text-xs font-bold text-center min-w-12 ${
-                                    isDaily
-                                      ? "bg-[#F2E8EA] text-[#6B2D3A]"
-                                      : "bg-[#6B2D3A] text-white"
-                                  }`}
-                                >
-                                  <span className="block text-[9px] uppercase opacity-80 leading-tight">
-                                    {dayName}
-                                  </span>
-                                  <span className="font-serif">{dateNum}</span>
-                                </div>
-
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-serif font-bold text-sm text-[#1A1817]">
-                                      {isDaily ? "Daily Routine" : sessionName}
-                                    </h4>
-                                    <span
-                                      className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
-                                        isDaily
-                                          ? "bg-[#F8F5F2] text-[#8C7B75] border-[#EAE3DE]"
-                                          : "bg-[#F2E8EA] text-[#6B2D3A] border-[#D9B7BE]/40"
-                                      }`}
-                                    >
-                                      {isDaily ? "Daily Reset" : "Gym Split"}
-                                    </span>
-                                  </div>
-                                  <p className="text-[11px] text-[#8C7B75] mt-0.5">
-                                    {sess.exercises?.length || 0} exercises completed
-                                  </p>
-                                </div>
-                              </div>
-
-                              <ChevronDown
-                                className={`w-4 h-4 text-[#8C7B75] transition-transform duration-200 ${
-                                  isDayExpanded ? "rotate-180" : ""
-                                }`}
-                              />
-                            </div>
-
-                            {/* Exercises Drill-Down */}
-                            {isDayExpanded && (
-                              <div className="px-4 pb-4 pt-2 border-t border-[#EAE3DE]/60 bg-[#F8F5F2]/20 space-y-3">
-                                {sess.exercises?.map((ex: any, eIdx: number) => {
-                                  const dbEx = EXERCISE_DATABASE.find(
-                                    (item) => item.id === ex.exerciseId
-                                  );
-                                  const exName =
-                                    dbEx?.name ||
-                                    ex.exerciseId ||
-                                    `Exercise ${eIdx + 1}`;
-
-                                  return (
-                                    <div
-                                      key={eIdx}
-                                      className="p-3 bg-[#FFFCFA] rounded-xl border border-[#EAE3DE] space-y-2 text-xs"
-                                    >
-                                      <div className="flex items-center justify-between font-serif font-bold text-[#1A1817]">
-                                        <span className="flex items-center gap-1.5">
-                                          <CheckCircle2 className="w-3.5 h-3.5 text-[#6B2D3A]" />
-                                          {exName}
-                                        </span>
-                                        <span className="text-[10px] font-mono text-[#8C7B75]">
-                                          {ex.sets?.length || 0} sets
-                                        </span>
-                                      </div>
-
-                                      <div className="grid grid-cols-3 gap-1.5 pt-1 text-[11px]">
-                                        {ex.sets?.map(
-                                          (set: any, sIdx: number) => (
-                                            <div
-                                              key={sIdx}
-                                              className="bg-[#F8F5F2] px-2 py-1 rounded-lg border border-[#EAE3DE] text-center"
-                                            >
-                                              <span className="text-[9px] text-[#8C7B75] block uppercase">
-                                                Set {sIdx + 1}
-                                              </span>
-                                              <span className="font-semibold text-[#1A1817]">
-                                                {set.reps || 0} reps
-                                                {set.weight
-                                                  ? ` @ ${set.weight}kg`
-                                                  : ""}
-                                              </span>
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+                week={week}
+                isExpanded={isExpanded}
+                onToggle={() =>
+                  setExpandedWeek(isExpanded ? null : week.weekKey)
+                }
+                selectedDayDetail={selectedDayDetail}
+                onSelectDayDetail={setSelectedDayDetail}
+              />
             );
           })}
         </div>

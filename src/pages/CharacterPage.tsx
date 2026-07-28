@@ -1,118 +1,14 @@
 import { useEffect, useState } from "react";
-import { 
-  Shield, 
-  Award, 
-  Compass, 
-  Zap, 
-  Flame, 
-  CheckCircle2, 
-  Circle, 
-  Lock 
-} from "lucide-react";
 import { db } from "@/db/dexie";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
+import { type CharacterStats, type SkillTreeGroup,type TitleItem,type QuestItem } from "@/types/character";
+import { getLevelAndXp } from "@/utils/xpCalculations";
 
-// --- Types & Interfaces ---
-interface CharacterStats {
-  totalXp: number;
-  level: number;
-  xpInCurrentLevel: number;
-  xpNeededForNextLevel: number;
-  levelProgressPercent: number;
-  
-  // Attributes
-  strengthLevel: number;
-  athleticismLevel: number;
-  mobilityLevel: number;
-  balanceLevel: number;
-  enduranceLevel: number;
-  gripLevel: number;
-  coreLevel: number;
-
-  // Identity
-  primaryClass: string;
-  secondaryClass: string;
-  currentFocus: string;
-  trainingStyle: string;
-
-  // Lifetime Stats
-  gymSessionsCount: number;
-  strengthSessionsCount: number;
-  classesCount: number;
-  mobilitySessionsCount: number;
-  prCount: number;
-  milestonesCount: number;
-  currentStreak: number;
-  longestStreak: number;
-  hoursTrained: number;
-}
-
-interface SkillNode {
-  name: string;
-  completed: boolean;
-}
-
-interface SkillTreeGroup {
-  categoryName: string;
-  skills: SkillNode[];
-}
-
-interface TitleItem {
-  id: string;
-  name: string;
-  unlocked: boolean;
-}
-
-interface QuestItem {
-  title: string;
-  progressPercent: number;
-}
-
-// --- Helper Functions for Level & XP Thresholds ---
-function getLevelAndXp(totalXp: number) {
-  // Threshold table based on user guide
-  let level = 1;
-  let nextLevelXp = 100;
-  let currentLevelBase = 0;
-
-  if (totalXp >= 20000) {
-    level = 50;
-    nextLevelXp = 20000;
-    currentLevelBase = 20000;
-  } else if (totalXp >= 4200) {
-    level = 20;
-    nextLevelXp = 5000; // scaling past 20
-    currentLevelBase = 4200;
-  } else {
-    // Dynamic bracket calculation matching the guide pattern
-    // Level 1: 0 - 100
-    // Level 2: 100 - 250 (span 150)
-    // Level 3: 250 - 450 (span 200)
-    let cumulative = 0;
-    let base = 0;
-    let span = 100;
-
-    for (let l = 1; l <= 50; l++) {
-      base = cumulative;
-      span = 100 + (l - 1) * 50;
-      cumulative += span;
-      if (totalXp < cumulative) {
-        level = l;
-        nextLevelXp = cumulative;
-        currentLevelBase = base;
-        break;
-      }
-    }
-  }
-
-  const xpInLevel = Math.max(0, totalXp - currentLevelBase);
-  const xpSpan = Math.max(1, nextLevelXp - currentLevelBase);
-  const progressPercent = Math.min(100, Math.max(0, Math.round((xpInLevel / xpSpan) * 100)));
-
-  return { level, xpInLevel, xpSpan, progressPercent };
-}
-
-
+import CharacterHeader from "@/components/character/CharacterHeader";
+import AttributeGrid from "@/components/character/AttributeGrid";
+import SkillTreeSection from "@/components/character/SkillTreeSection";
+import TitlesSection from "@/components/character/TitlesSection";
+import CurrentQuest from "@/components/character/CurrentQuest";
 
 export default function CharacterPage() {
   const [loading, setLoading] = useState(true);
@@ -152,18 +48,16 @@ export default function CharacterPage() {
     progressPercent: 0,
   });
 
- useEffect(() => {
+  useEffect(() => {
     async function calculateRealCharacterData() {
       try {
         const sessions = await db.sessions.toArray();
 
-        // If no data exists, keep everything cleanly at 0
         if (!sessions || sessions.length === 0) {
           setLoading(false);
           return;
         }
 
-        // Sort sessions chronologically
         const sortedSessions = [...sessions].sort((a: any, b: any) => {
           const timeA = new Date(a.timestamp || a.startTime || 0).getTime();
           const timeB = new Date(b.timestamp || b.startTime || 0).getTime();
@@ -209,7 +103,7 @@ export default function CharacterPage() {
         let sessionDates = new Set<string>();
 
         sortedSessions.forEach((session: any) => {
-          calculatedXp += 100; // Workout Completed
+          calculatedXp += 100;
 
           const rawDate = session.timestamp || session.startTime || Date.now();
           const dateKey = new Date(rawDate).toDateString();
@@ -284,9 +178,9 @@ export default function CharacterPage() {
             if (sessionBestForExercise > 0) {
               const previousBest = previousSessionMaxValues.get(exId) || 0;
               if (sessionBestForExercise > previousBest) {
-                calculatedXp += 50; // Progressive Overload
+                calculatedXp += 50; 
                 prCount++;
-                calculatedXp += 120; // PR Bonus
+                calculatedXp += 120; 
                 previousSessionMaxValues.set(exId, sessionBestForExercise);
               }
             }
@@ -303,7 +197,6 @@ export default function CharacterPage() {
           if (count >= 3) calculatedXp += 250;
         });
 
-        // Calculate Streaks safely based on real logs
         let currentStreak = 0;
         let longestStreak = 0;
         let streakBonus = 0;
@@ -332,9 +225,8 @@ export default function CharacterPage() {
 
         calculatedXp += streakBonus;
 
-        // Attributes Normalization
         const avgScore = (arr: number[], target: number) => {
-          if (arr.length === 0) return 0; // 0 for empty database
+          if (arr.length === 0) return 0;
           const maxVal = Math.max(...arr);
           return Math.min(100, Math.round((maxVal / target) * 100));
         };
@@ -469,295 +361,17 @@ export default function CharacterPage() {
     );
   }
 
-  const activeTreeData = skillTrees.find((t) => t.categoryName === activeSkillTab) || skillTrees[0];
-
   return (
     <div className="space-y-6 pb-12 font-sans">
-      
-      {/* ================= HERO CARD: RPG BANNER ================= */}
-      <div className="bg-gradient-to-br from-[#1A1817] via-[#2C2826] to-[#1A1817] text-white rounded-[32px] p-6 sm:p-8 border border-[#3D3734] shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[#6B2D3A]/20 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
-            <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#D9B7BE] block">
-                Character Profile
-              </span>
-              <h1 className="font-serif font-bold text-3xl sm:text-4xl tracking-tight text-white">
-                FEY
-              </h1>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 px-5 py-2.5 rounded-2xl flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#6B2D3A] text-white flex items-center justify-center font-serif font-bold text-lg shadow-sm">
-                {stats.level}
-              </div>
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-white/65 block">
-                  Level {stats.level}
-                </span>
-                <span className="font-serif font-bold text-sm text-white">
-                  "The Warrior"
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs font-mono">
-              <span className="text-white/70">XP {stats.xpInCurrentLevel.toLocaleString()} / {stats.xpNeededForNextLevel.toLocaleString()}</span>
-              <span className="text-[#D9B7BE] font-bold">{stats.levelProgressPercent}% To Next Level</span>
-            </div>
-            <div className="w-full bg-black/40 h-3.5 rounded-full overflow-hidden p-0.5 border border-white/10">
-              <div 
-                className="bg-gradient-to-r from-[#8C3A48] to-[#D9B7BE] h-full rounded-full transition-all duration-1000 shadow-sm"
-                style={{ width: `${stats.levelProgressPercent}%` }}
-              ></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white/50 block mb-0.5">Primary Class</span>
-              <span className="font-serif font-bold text-xs sm:text-sm text-white">{stats.primaryClass}</span>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white/50 block mb-0.5">Secondary Class</span>
-              <span className="font-serif font-bold text-xs sm:text-sm text-white">{stats.secondaryClass}</span>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white/50 block mb-0.5">Current Focus</span>
-              <span className="font-serif font-bold text-xs sm:text-sm text-[#D9B7BE]">{stats.currentFocus}</span>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-xs">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-white/50 block mb-0.5">Training Style</span>
-              <span className="font-serif font-bold text-xs sm:text-sm text-white">{stats.trainingStyle}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= OVERALL ATTRIBUTES ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-              Attributes Breakdown
-            </span>
-            <h2 className="font-serif font-bold text-xl text-[#1A1817]">
-              Overall Attributes
-            </h2>
-          </div>
-          <Shield className="w-5 h-5 text-[#6B2D3A]" />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          {[
-            { name: "Strength", level: stats.strengthLevel },
-            { name: "Athleticism", level: stats.athleticismLevel },
-            { name: "Mobility", level: stats.mobilityLevel },
-            { name: "Balance", level: stats.balanceLevel },
-            { name: "Endurance", level: stats.enduranceLevel },
-            { name: "Grip", level: stats.gripLevel },
-            { name: "Core", level: stats.coreLevel },
-          ].map((attr, idx) => (
-            <div 
-              key={idx} 
-              className="bg-[#FAF8F6] border border-[#EAE3DE] p-4 rounded-2xl flex items-center justify-between shadow-2xs hover:border-[#D9B7BE] transition-all"
-            >
-              <span className="font-serif font-bold text-sm text-[#1A1817]">
-                {attr.name}
-              </span>
-              <span className="font-mono font-bold text-sm bg-white border border-[#EAE3DE] px-3 py-1 rounded-xl text-[#6B2D3A] shadow-2xs">
-                Lv.{attr.level}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= SKILL TREES ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-              Progression Pathways
-            </span>
-            <h2 className="font-serif font-bold text-xl text-[#1A1817]">
-              Skill Trees
-            </h2>
-          </div>
-          <Compass className="w-5 h-5 text-[#6B2D3A]" />
-        </div>
-
-        <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-          {skillTrees.map((tree) => (
-            <button
-              key={tree.categoryName}
-              onClick={() => setActiveSkillTab(tree.categoryName)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-serif font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeSkillTab === tree.categoryName
-                  ? "bg-[#6B2D3A] text-white shadow-sm"
-                  : "bg-[#FAF8F6] text-[#8C7B75] border border-[#EAE3DE] hover:text-[#1A1817]"
-              }`}
-            >
-              {tree.categoryName}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-          {activeTreeData && activeTreeData.skills.map((skill, idx) => (
-            <div
-              key={idx}
-              className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-                skill.completed 
-                  ? "bg-[#FAF8F6] border-[#EAE3DE]" 
-                  : "bg-white border-[#EAE3DE] opacity-60"
-              }`}
-            >
-              <span className={`font-serif text-sm ${skill.completed ? "font-bold text-[#1A1817]" : "text-[#8C7B75]"}`}>
-                {skill.name}
-              </span>
-              <div className="w-7 h-7 rounded-xl flex items-center justify-center">
-                {skill.completed ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#2E6B40]" />
-                ) : (
-                  <Circle className="w-5 h-5 text-[#EAE3DE]" />
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ================= TITLES ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-              Honors & Accolades
-            </span>
-            <h2 className="font-serif font-bold text-xl text-[#1A1817]">
-              Titles
-            </h2>
-          </div>
-          <Award className="w-5 h-5 text-[#6B2D3A]" />
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#2E6B40] block mb-2 font-bold">
-              Unlocked Titles
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {titles.filter(t => t.unlocked).map((title) => (
-                <div key={title.id} className="bg-[#FAF8F6] border border-[#EAE3DE] p-3.5 rounded-2xl flex items-center gap-3 shadow-2xs">
-                  <div className="w-8 h-8 rounded-xl bg-[#2E6B40]/10 text-[#2E6B40] flex items-center justify-center font-bold text-xs">
-                    ✓
-                  </div>
-                  <span className="font-serif font-bold text-xs text-[#1A1817]">{title.name}</span>
-                </div>
-              ))}
-              {titles.filter(t => t.unlocked).length === 0 && (
-                <div className="col-span-3 text-xs text-[#8C7B75] py-2">
-                  Complete more workouts and unlock milestones to earn titles!
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block mb-2 font-bold">
-              Locked Titles
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {titles.filter(t => !t.unlocked).map((title) => (
-                <div key={title.id} className="bg-white border border-[#EAE3DE] p-3.5 rounded-2xl flex items-center gap-3 opacity-60">
-                  <div className="w-8 h-8 rounded-xl bg-[#FAF8F6] text-[#8C7B75] flex items-center justify-center">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <span className="font-serif font-bold text-xs text-[#8C7B75]">{title.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= CURRENT QUEST ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-              Active Objectives
-            </span>
-            <h2 className="font-serif font-bold text-xl text-[#1A1817]">
-              Current Quest
-            </h2>
-          </div>
-          <Zap className="w-5 h-5 text-[#6B2D3A]" />
-        </div>
-
-        <div className="bg-[#FAF8F6] border border-[#EAE3DE] p-5 rounded-2xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-serif font-bold text-base text-[#1A1817]">
-              {currentQuest.title}
-            </h3>
-            <span className="font-mono font-bold text-sm text-[#6B2D3A]">
-              {currentQuest.progressPercent}%
-            </span>
-          </div>
-
-          <div className="w-full bg-white h-3 rounded-full overflow-hidden border border-[#EAE3DE] p-0.5">
-            <div
-              className="bg-[#6B2D3A] h-full rounded-full transition-all duration-700"
-              style={{ width: `${currentQuest.progressPercent}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= LIFETIME STATS ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-7 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-              Account Ledger
-            </span>
-            <h2 className="font-serif font-bold text-xl text-[#1A1817]">
-              Lifetime Stats
-            </h2>
-          </div>
-          <Flame className="w-5 h-5 text-[#6B2D3A]" />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-          {[
-            { label: "Total XP", value: stats.totalXp.toLocaleString() },
-            { label: "Gym Sessions", value: stats.gymSessionsCount },
-            { label: "Strength Sessions", value: stats.strengthSessionsCount },
-            { label: "Classes", value: stats.classesCount },
-            { label: "Mobility Sessions", value: stats.mobilitySessionsCount },
-            { label: "Personal Records", value: stats.prCount },
-            { label: "Milestones", value: stats.milestonesCount },
-            { label: "Current Streak", value: `${stats.currentStreak} Days` },
-            { label: "Longest Streak", value: `${stats.longestStreak} Days` },
-            { label: "Hours Trained", value: `${stats.hoursTrained} Hours` },
-          ].map((stat, idx) => (
-            <div key={idx} className="bg-[#FAF8F6] border border-[#EAE3DE] p-4 rounded-2xl space-y-1 shadow-2xs">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-                {stat.label}
-              </span>
-              <span className="font-serif font-bold text-lg text-[#1A1817]">
-                {stat.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      <CharacterHeader stats={stats} />
+      <AttributeGrid stats={stats} />
+      <SkillTreeSection 
+        skillTrees={skillTrees} 
+        activeSkillTab={activeSkillTab} 
+        setActiveSkillTab={setActiveSkillTab} 
+      />
+      <TitlesSection titles={titles} />
+      <CurrentQuest currentQuest={currentQuest} />
     </div>
   );
 }
