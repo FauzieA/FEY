@@ -1,0 +1,39 @@
+import { db } from "@/db/dexie";
+import { logActivity } from "@/services/xpService";
+import { today } from "@/utils/date";
+import type { CycleLog, HealthNote, Measurement, SleepLog, WeightLog } from "@/types/modules";
+
+export const HealthRepository = {
+  async logWeight(entry: Omit<WeightLog, "id">): Promise<void> {
+    await db.weights.add(entry);
+    await logActivity("weight_logged", { date: entry.date });
+  },
+
+  async addMeasurement(entry: Omit<Measurement, "id">): Promise<void> {
+    await db.measurements.add(entry);
+    await logActivity("measurement_logged", { date: entry.date });
+  },
+
+  async logSleep(entry: Omit<SleepLog, "id">): Promise<void> {
+    await db.sleepLogs.add(entry);
+    await logActivity("sleep_logged", { date: entry.date });
+  },
+
+  async startCycle(entry: Omit<CycleLog, "id">): Promise<void> {
+    await db.cycleLogs.add(entry);
+    await logActivity("cycle_logged", { date: entry.startDate });
+  },
+
+  async endCycle(id: number, endDate = today()): Promise<void> {
+    await db.cycleLogs.update(id, { endDate });
+  },
+
+  async addHealthNote(entry: Omit<HealthNote, "id">): Promise<void> {
+    await db.healthNotes.add(entry);
+    await logActivity("health_note", { date: entry.date });
+  },
+
+  async remove(table: "weights" | "sleepLogs" | "measurements" | "healthNotes", id: number): Promise<void> {
+    await db[table].delete(id);
+  },
+};

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { db } from "@/db/dexie";
+import { TrainingRepository } from "@/repositories/trainingRepository";
 import { Check } from "lucide-react";
 
 import WorkoutHeader from "@/components/workout/WorkoutHeader";
@@ -193,7 +194,7 @@ export default function WorkoutPage() {
       const dateKey = new Date().toISOString().slice(0, 10);
       const sessionId = `session_${exercise.id}_${dateKey}`;
 
-      await db.sessions.put({
+      await TrainingRepository.saveSession({
         id: sessionId,
         planTitle: exercise.name,
         completedAt: new Date().toISOString(),
