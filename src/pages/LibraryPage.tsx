@@ -12,6 +12,7 @@ import { TrendChart } from "@/components/ui/TrendChart";
 import { Button } from "@/components/common/Button";
 import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { LibraryRepository } from "@/repositories/libraryRepository";
+import { db } from "@/db/dexie";
 import type { BookStatus } from "@/types/modules";
 import { formatDate, formatShortDate, lastNDays, relativeDay, today } from "@/utils/date";
 import { average, percent } from "@/utils/format";
@@ -63,6 +64,7 @@ function AddBookForm({ status }: { status: BookStatus }) {
     author: "",
     totalPages: "",
     seriesName: "",
+    sequelTo: "",
     expectedReleaseDate: "",
   });
 
@@ -80,9 +82,10 @@ function AddBookForm({ status }: { status: BookStatus }) {
           startedAt: status === "reading" ? today() : undefined,
           finishedAt: null,
           seriesName: form.seriesName || undefined,
+          sequelTo: form.sequelTo || undefined,
           expectedReleaseDate: form.expectedReleaseDate || undefined,
         });
-        setForm({ title: "", author: "", totalPages: "", seriesName: "", expectedReleaseDate: "" });
+        setForm({ title: "", author: "", totalPages: "", seriesName: "", sequelTo: "", expectedReleaseDate: "" });
       }}
     >
       <Field label="Title">
@@ -98,13 +101,18 @@ function AddBookForm({ status }: { status: BookStatus }) {
         <TextInput value={form.seriesName} onChange={(e) => setForm({ ...form, seriesName: e.target.value })} />
       </Field>
       {status === "waiting" && (
-        <Field label="Expected release" className="sm:col-span-2">
-          <TextInput
-            type="date"
-            value={form.expectedReleaseDate}
-            onChange={(e) => setForm({ ...form, expectedReleaseDate: e.target.value })}
-          />
-        </Field>
+        <>
+          <Field label="Sequel to" hint="Optional - which book is this a sequel to?">
+            <TextInput value={form.sequelTo} onChange={(e) => setForm({ ...form, sequelTo: e.target.value })} />
+          </Field>
+          <Field label="Expected release" className="sm:col-span-2">
+            <TextInput
+              type="date"
+              value={form.expectedReleaseDate}
+              onChange={(e) => setForm({ ...form, expectedReleaseDate: e.target.value })}
+            />
+          </Field>
+        </>
       )}
     </InlineForm>
   );
@@ -113,15 +121,41 @@ function AddBookForm({ status }: { status: BookStatus }) {
 function CurrentTab() {
   const snapshot = useFeySnapshot();
   const reading = snapshot.books.filter((book) => book.status === "reading");
-  const [pages, setPages] = useState<Record<number, string>>({});
+  const [newQuote, setNewQuote] = useState<Record<number, string>>({});
+  const [newFootnote, setNewFootnote] = useState<Record<number, string>>({});
+  const [expandedBook, setExpandedBook] = useState<number | null>(null);
+
+  const addQuote = async (bookId: number) => {
+    const quote = newQuote[bookId];
+    if (!quote) return;
+    const book = await db.books.get(bookId);
+    if (book) {
+      await db.books.update(bookId, {
+        quotes: [...(book.quotes || []), quote],
+      });
+      setNewQuote({ ...newQuote, [bookId]: "" });
+    }
+  };
+
+  const addFootnote = async (bookId: number) => {
+    const footnote = newFootnote[bookId];
+    if (!footnote) return;
+    const book = await db.books.get(bookId);
+    if (book) {
+      await db.books.update(bookId, {
+        footnotes: [...(book.footnotes || []), footnote],
+      });
+      setNewFootnote({ ...newFootnote, [bookId]: "" });
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <Section title="Currently reading" subtitle="Log pages as you go — finishing a book is awarded automatically">
+      <Section title="Currently reading" subtitle="Track your progress and save favorite quotes">
         <AddBookForm status="reading" />
 
         <div className="space-y-3">
-          {reading.length === 0 && <EmptyState title="Nothing in progress" hint="Add a book to start tracking pages." />}
+          {reading.length === 0 && <EmptyState title="Nothing in progress" hint="Add a book to start tracking." />}
           {reading.map((book) => (
             <ListRow
               key={book.id}
@@ -131,26 +165,67 @@ function CurrentTab() {
             >
               <div className="space-y-3">
                 <ProgressBar value={percent(book.currentPage, book.totalPages)} caption={`${percent(book.currentPage, book.totalPages)}%`} />
+                
+                {/* Expand/Collapse for quotes and footnotes */}
+                <button
+                  type="button"
+                  onClick={() => setExpandedBook(expandedBook === book.id ? null : book.id)}
+                  className="w-full py-2 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
+                >
+                  {expandedBook === book.id ? "Hide Notes" : "Add Quotes & Footnotes"}
+                </button>
+
+                {expandedBook === book.id && (
+                  <div className="space-y-3 mt-3">
+                    {/* Add Quote */}
+                    <div className="flex gap-2">
+                      <TextInput
+                        placeholder="Add a favorite quote..."
+                        value={newQuote[book.id!] ?? ""}
+                        onChange={(e) => setNewQuote({ ...newQuote, [book.id!]: e.target.value })}
+                        className="flex-1"
+                      />
+                      <Button size="sm" onClick={() => addQuote(book.id!)}>Add</Button>
+                    </div>
+                    
+                    {/* Display Quotes */}
+                    {book.quotes && book.quotes.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#8C7B75]">Saved Quotes</p>
+                        {book.quotes.map((quote, idx) => (
+                          <div key={idx} className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-xl p-3 text-sm italic text-[#6B2D3A]">
+                            "{quote}"
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Footnote */}
+                    <div className="flex gap-2">
+                      <TextInput
+                        placeholder="Add a footnote (chapter, notes)..."
+                        value={newFootnote[book.id!] ?? ""}
+                        onChange={(e) => setNewFootnote({ ...newFootnote, [book.id!]: e.target.value })}
+                        className="flex-1"
+                      />
+                      <Button size="sm" onClick={() => addFootnote(book.id!)}>Add</Button>
+                    </div>
+
+                    {/* Display Footnotes */}
+                    {book.footnotes && book.footnotes.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-widest text-[#8C7B75]">Saved Footnotes</p>
+                        {book.footnotes.map((footnote, idx) => (
+                          <div key={idx} className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-xl p-3 text-sm text-[#1A1817]">
+                            {footnote}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-2">
-                  <TextInput
-                    type="number"
-                    min="1"
-                    placeholder="Pages read"
-                    value={pages[book.id!] ?? ""}
-                    onChange={(e) => setPages({ ...pages, [book.id!]: e.target.value })}
-                    className="w-32"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      const value = Number(pages[book.id!]);
-                      if (!value) return;
-                      await LibraryRepository.logReading(book.id!, value);
-                      setPages({ ...pages, [book.id!]: "" });
-                    }}
-                  >
-                    Log reading
-                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => void LibraryRepository.finishBook(book.id!)}>
                     Mark finished
                   </Button>

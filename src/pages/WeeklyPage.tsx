@@ -61,7 +61,7 @@ export default function WeeklyPage() {
     <div className="min-h-screen bg-[#F8F5F2] text-[#1A1817] p-4 md:p-8 pb-32 max-w-4xl mx-auto space-y-6">
       <header className="flex items-center justify-between pt-2">
         <button
-          onClick={() => navigate("/workout")}
+          onClick={() => navigate("/training")}
           className="p-2 text-[#6B2D3A] hover:bg-[#F2E8EA]/50 rounded-full transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />

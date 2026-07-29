@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Section } from "@/components/ui/Section";
 import { StatTile } from "@/components/ui/StatTile";
@@ -6,13 +6,15 @@ import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListRow } from "@/components/ui/ListRow";
 import { InlineForm } from "@/components/ui/InlineForm";
-import { Field, CheckRow, Select, TextArea, TextInput } from "@/components/ui/Field";
+import { Field, CheckRow, Select, TextInput } from "@/components/ui/Field";
 import { Button } from "@/components/common/Button";
 import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { FaithRepository } from "@/repositories/faithRepository";
 import { PRAYER_NAMES, type MemorizationStatus, type PrayerName } from "@/types/modules";
 import { formatDate, today, weekdayLabel, weekDates, currentStreak, relativeDay } from "@/utils/date";
 import { titleCase } from "@/utils/format";
+import { getRandomPrayerQuote } from "@/data/prayerQuotes";
+import { ADHKAR_DATA, getRandomIstighfarQuote } from "@/data/adhkarData";
 
 const TABS = [
   { id: "prayer", label: "Prayer" },
@@ -67,9 +69,82 @@ function PrayerTab() {
   const snapshot = useFeySnapshot();
   const todayIso = today();
   const log = snapshot.prayerLogs.find((entry) => entry.date === todayIso);
+  const [nextPrayer, setNextPrayer] = useState<{ name: string; time: string; countdown: string } | null>(null);
+  const [quote, setQuote] = useState<string>("");
+
+  // Fixed prayer times (24-hour format)
+  const prayerTimes = {
+    fajr: "06:00",
+    dhuhr: "12:30",
+    asr: "16:00",
+    maghrib: "18:45",
+    isha: "20:00",
+  };
+
+  useEffect(() => {
+    // Set daily quote
+    setQuote(getRandomPrayerQuote());
+
+    // Calculate next prayer countdown
+    const updateCountdown = () => {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      let nextPrayerName: string | null = null;
+      let nextPrayerMinutes: number | null = null;
+
+      for (const [name, time] of Object.entries(prayerTimes)) {
+        const [hours, minutes] = time.split(":").map(Number);
+        const prayerMinutes = hours * 60 + minutes;
+        if (prayerMinutes > currentMinutes) {
+          nextPrayerName = name;
+          nextPrayerMinutes = prayerMinutes;
+          break;
+        }
+      }
+
+      // If no prayer left today, show fajr for tomorrow
+      if (!nextPrayerName) {
+        const [hours, minutes] = prayerTimes.fajr.split(":").map(Number);
+        nextPrayerName = "fajr";
+        nextPrayerMinutes = hours * 60 + minutes + 24 * 60; // Add 24 hours for tomorrow
+      }
+
+      if (nextPrayerName && nextPrayerMinutes !== null) {
+        const diffMinutes = nextPrayerMinutes - currentMinutes;
+        const hours = Math.floor(diffMinutes / 60);
+        const minutes = diffMinutes % 60;
+        const countdown = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        setNextPrayer({ name: titleCase(nextPrayerName), time: prayerTimes[nextPrayerName as keyof typeof prayerTimes], countdown });
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-6">
+      {/* Prayer Quote */}
+      <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
+        <p className="text-sm italic text-[#6B2D3A] text-center">{quote}</p>
+      </div>
+
+      {/* Next Prayer Countdown */}
+      {nextPrayer && (
+        <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Next prayer</p>
+            <p className="font-serif text-lg text-[#1A1817]">{nextPrayer.name} at {nextPrayer.time}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">In</p>
+            <p className="font-mono text-lg text-[#6B2D3A]">{nextPrayer.countdown}</p>
+          </div>
+        </div>
+      )}
+
       <Section title="Today" subtitle={formatDate(todayIso)}>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {PRAYER_NAMES.map((name) => (
@@ -129,76 +204,60 @@ function PrayerTab() {
 
 function QuranTab() {
   const snapshot = useFeySnapshot();
-  const [reading, setReading] = useState({ date: today(), surah: "", fromAyah: "1", toAyah: "", pages: "", reflection: "" });
   const [memo, setMemo] = useState({ surah: "", fromAyah: "1", toAyah: "", status: "learning" as MemorizationStatus });
-  const [revision, setRevision] = useState({ date: today(), surah: "", quality: "4", notes: "" });
 
-  const totalPages = snapshot.quranReading.reduce((sum, entry) => sum + (entry.pages ?? 0), 0);
+  // Calculate memorization stats
+  const totalMemorizedVerses = snapshot.memorization
+    .filter((m) => m.status === "memorized")
+    .reduce((sum, m) => sum + (m.toAyah - m.fromAyah + 1), 0);
+  
+  const totalInProgressVerses = snapshot.memorization
+    .filter((m) => m.status === "learning" || m.status === "needs-work")
+    .reduce((sum, m) => sum + (m.toAyah - m.fromAyah + 1), 0);
+
+  const totalVerses = totalMemorizedVerses + totalInProgressVerses;
+  const memorizationPercent = totalVerses > 0 ? Math.round((totalMemorizedVerses / totalVerses) * 100) : 0;
+
+  const uniqueSurahs = new Set(snapshot.memorization.map((m) => m.surah)).size;
+  const memorizedSurahs = new Set(snapshot.memorization.filter((m) => m.status === "memorized").map((m) => m.surah)).size;
+
+  // Calculate approximate juz (1 juz ≈ 20 pages, ~6000 verses total)
+  const totalJuz = Math.round(totalVerses / 286); // Approximate verses per juz
+  const memorizedJuz = Math.round(totalMemorizedVerses / 286);
+
+  // Get passages that need revision (not reviewed in last 7 days)
   const dueRevision = [...snapshot.memorization]
     .filter((entry) => entry.status !== "learning")
     .sort((a, b) => (a.lastReviewedAt ?? "").localeCompare(b.lastReviewedAt ?? ""))
-    .slice(0, 5);
+    .slice(0, 3);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Reading sessions" value={snapshot.quranReading.length} />
-        <StatTile label="Pages read" value={totalPages} />
-        <StatTile label="Revisions" value={snapshot.revisions.length} />
-        <StatTile label="In progress" value={snapshot.memorization.filter((m) => m.status !== "memorized").length} />
+        <StatTile label="Verses memorized" value={`${totalMemorizedVerses} / ${totalVerses}`} tone="burgundy" />
+        <StatTile label="Completion" value={`${memorizationPercent}%`} />
+        <StatTile label="Surahs" value={`${memorizedSurahs} / ${uniqueSurahs}`} />
+        <StatTile label="Juz" value={`${memorizedJuz} / ${totalJuz}`} />
       </div>
 
-      <Section title="Reading" subtitle="Log what I read and what struck me">
-        <InlineForm
-          title="Log reading session"
-          onSubmit={async () => {
-            if (!reading.surah || !reading.toAyah) return;
-            await FaithRepository.logQuranReading({
-              date: reading.date,
-              surah: reading.surah,
-              fromAyah: Number(reading.fromAyah) || 1,
-              toAyah: Number(reading.toAyah),
-              pages: reading.pages ? Number(reading.pages) : undefined,
-              reflection: reading.reflection || undefined,
-            });
-            setReading({ date: today(), surah: "", fromAyah: "1", toAyah: "", pages: "", reflection: "" });
-          }}
-        >
-          <Field label="Date">
-            <TextInput type="date" value={reading.date} onChange={(e) => setReading({ ...reading, date: e.target.value })} />
-          </Field>
-          <Field label="Surah">
-            <TextInput value={reading.surah} placeholder="Al-Baqarah" onChange={(e) => setReading({ ...reading, surah: e.target.value })} />
-          </Field>
-          <Field label="From ayah">
-            <TextInput type="number" min="1" value={reading.fromAyah} onChange={(e) => setReading({ ...reading, fromAyah: e.target.value })} />
-          </Field>
-          <Field label="To ayah">
-            <TextInput type="number" min="1" value={reading.toAyah} onChange={(e) => setReading({ ...reading, toAyah: e.target.value })} />
-          </Field>
-          <Field label="Pages">
-            <TextInput type="number" min="0" value={reading.pages} onChange={(e) => setReading({ ...reading, pages: e.target.value })} />
-          </Field>
-          <Field label="Reflection" className="sm:col-span-2">
-            <TextArea value={reading.reflection} onChange={(e) => setReading({ ...reading, reflection: e.target.value })} />
-          </Field>
-        </InlineForm>
-
-        <div className="space-y-2">
-          {snapshot.quranReading.length === 0 && <EmptyState title="No reading logged yet" hint="Start with a single page." />}
-          {[...snapshot.quranReading]
-            .sort((a, b) => b.date.localeCompare(a.date))
-            .slice(0, 6)
-            .map((entry) => (
-              <ListRow
-                key={entry.id}
-                title={`${entry.surah} ${entry.fromAyah}–${entry.toAyah}`}
-                subtitle={entry.reflection}
-                meta={formatDate(entry.date)}
-              />
+      {/* Revision Reminder */}
+      {dueRevision.length > 0 && (
+        <Section title="Revision Reminder" subtitle="Passages that need your attention">
+          <div className="space-y-2">
+            {dueRevision.map((entry) => (
+              <div key={entry.id} className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="font-serif text-sm text-[#1A1817]">{entry.surah} ({entry.fromAyah}–{entry.toAyah})</p>
+                  <p className="text-xs text-[#8C7B75]">Last reviewed: {entry.lastReviewedAt ? relativeDay(entry.lastReviewedAt) : "Never"}</p>
+                </div>
+                <Button size="sm" variant="rose" onClick={() => setMemo({ ...memo, surah: entry.surah, fromAyah: String(entry.fromAyah), toAyah: String(entry.toAyah) })}>
+                  Revise
+                </Button>
+              </div>
             ))}
-        </div>
-      </Section>
+          </div>
+        </Section>
+      )}
 
       <Section title="Memorization" subtitle="Hifdh in progress and secured">
         <InlineForm
@@ -235,84 +294,28 @@ function QuranTab() {
 
         <div className="space-y-2">
           {snapshot.memorization.length === 0 && <EmptyState title="No passages tracked yet" />}
-          {snapshot.memorization.map((entry) => (
-            <ListRow
-              key={entry.id}
-              title={`${entry.surah} ${entry.fromAyah}–${entry.toAyah}`}
-              subtitle={`Started ${formatDate(entry.startedAt)}${entry.lastReviewedAt ? ` · reviewed ${relativeDay(entry.lastReviewedAt)}` : ""}`}
-              actions={
-                <Select
-                  value={entry.status}
-                  onChange={(e) => void FaithRepository.setMemorizationStatus(entry.id!, e.target.value as MemorizationStatus)}
-                  className="w-36 py-1 text-xs"
-                >
-                  <option value="learning">Learning</option>
-                  <option value="needs-work">Needs work</option>
-                  <option value="memorized">Memorized</option>
-                </Select>
-              }
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Revision" subtitle="Oldest reviews first — these need attention">
-        {dueRevision.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {dueRevision.map((entry) => (
-              <button
+          {snapshot.memorization.map((entry) => {
+            const versesCount = entry.toAyah - entry.fromAyah + 1;
+            return (
+              <ListRow
                 key={entry.id}
-                type="button"
-                onClick={() => setRevision({ ...revision, surah: entry.surah })}
-                className="rounded-full border border-[#D9B7BE]/60 bg-[#F2E8EA] px-3 py-1 text-xs text-[#6B2D3A]"
-              >
-                {entry.surah} · {entry.lastReviewedAt ? relativeDay(entry.lastReviewedAt) : "never revised"}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <InlineForm
-          title="Log revision"
-          onSubmit={async () => {
-            if (!revision.surah) return;
-            await FaithRepository.logRevision({
-              date: revision.date,
-              surah: revision.surah,
-              quality: Number(revision.quality),
-              notes: revision.notes || undefined,
-            });
-            setRevision({ date: today(), surah: "", quality: "4", notes: "" });
-          }}
-        >
-          <Field label="Date">
-            <TextInput type="date" value={revision.date} onChange={(e) => setRevision({ ...revision, date: e.target.value })} />
-          </Field>
-          <Field label="Surah">
-            <TextInput value={revision.surah} onChange={(e) => setRevision({ ...revision, surah: e.target.value })} />
-          </Field>
-          <Field label="Recall quality" hint="1 shaky · 5 solid">
-            <Select value={revision.quality} onChange={(e) => setRevision({ ...revision, quality: e.target.value })}>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Notes">
-            <TextInput value={revision.notes} onChange={(e) => setRevision({ ...revision, notes: e.target.value })} />
-          </Field>
-        </InlineForm>
-
-        <div className="space-y-2">
-          {snapshot.revisions.length === 0 && <EmptyState title="No revisions logged yet" />}
-          {[...snapshot.revisions]
-            .sort((a, b) => b.date.localeCompare(a.date))
-            .slice(0, 6)
-            .map((entry) => (
-              <ListRow key={entry.id} title={entry.surah} subtitle={entry.notes} meta={`${entry.quality}/5 · ${formatDate(entry.date)}`} />
-            ))}
+                title={`${entry.surah} (${entry.fromAyah}–${entry.toAyah})`}
+                subtitle={`${versesCount} verses · Started ${formatDate(entry.startedAt)}${entry.lastReviewedAt ? ` · reviewed ${relativeDay(entry.lastReviewedAt)}` : ""}`}
+                meta={`${entry.status}`}
+                actions={
+                  <Select
+                    value={entry.status}
+                    onChange={(e) => void FaithRepository.setMemorizationStatus(entry.id!, e.target.value as MemorizationStatus)}
+                    className="w-36 py-1 text-xs"
+                  >
+                    <option value="learning">Learning</option>
+                    <option value="needs-work">Needs work</option>
+                    <option value="memorized">Memorized</option>
+                  </Select>
+                }
+              />
+            );
+          })}
         </div>
       </Section>
     </div>
@@ -322,58 +325,124 @@ function QuranTab() {
 /* --------------------------------- Adhkar --------------------------------- */
 
 function AdhkarTab() {
-  const snapshot = useFeySnapshot();
-  const todayIso = today();
-  const log = snapshot.adhkarLogs.find((entry) => entry.date === todayIso);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [istighfarQuote, setIstighfarQuote] = useState<string>("");
+  const [completedAdhkar, setCompletedAdhkar] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setIstighfarQuote(getRandomIstighfarQuote());
+  }, []);
+
+  const toggleAdhkarItem = (categoryId: string, itemId: string) => {
+    const key = `${categoryId}_${itemId}`;
+    setCompletedAdhkar((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const getCategoryProgress = (categoryId: string) => {
+    const category = ADHKAR_DATA[categoryId];
+    if (!category) return { completed: 0, total: 0, percent: 0 };
+    const total = category.items.length;
+    const completed = category.items.filter((item) => completedAdhkar.has(`${categoryId}_${item.id}`)).length;
+    return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  };
 
   return (
     <div className="space-y-6">
-      <Section title="Today" subtitle={formatDate(todayIso)}>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <CheckRow
-            label="Morning adhkar"
-            checked={Boolean(log?.morning)}
-            onChange={() => void FaithRepository.toggleAdhkar(todayIso, "morning")}
-          />
-          <CheckRow
-            label="Evening adhkar"
-            checked={Boolean(log?.evening)}
-            onChange={() => void FaithRepository.toggleAdhkar(todayIso, "evening")}
-          />
-          <CheckRow
-            label="After-prayer adhkar"
-            checked={Boolean(log?.afterPrayer)}
-            onChange={() => void FaithRepository.toggleAdhkar(todayIso, "afterPrayer")}
-          />
-        </div>
+      {/* Istighfar Reminder */}
+      <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
+        <p className="text-sm italic text-[#6B2D3A] text-center">{istighfarQuote}</p>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#EAE3DE] bg-[#FFFCFA] p-4">
-          <div className="mr-auto">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Istighfar today</p>
-            <p className="font-serif text-2xl text-[#1A1817]">{log?.istighfarCount ?? 0}</p>
-          </div>
-          {[10, 33, 100].map((count) => (
-            <Button key={count} size="sm" variant="rose" onClick={() => void FaithRepository.addIstighfar(todayIso, count)}>
-              +{count}
-            </Button>
-          ))}
+      <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl p-4 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Istighfar Reminder</p>
+          <p className="font-serif text-lg text-[#1A1817]">Seek forgiveness throughout the day</p>
         </div>
-      </Section>
+        <Button size="sm" variant="rose" onClick={() => alert("Remember to say Astaghfirullah frequently throughout the day")}>
+          Remind Me
+        </Button>
+      </div>
 
-      <Section title="This week">
-        <div className="grid grid-cols-7 gap-2">
-          {weekDates().map((date) => {
-            const entry = snapshot.adhkarLogs.find((item) => item.date === date);
-            const score = [entry?.morning, entry?.evening, entry?.afterPrayer].filter(Boolean).length;
-            return (
-              <div key={date} className="rounded-2xl border border-[#EAE3DE] bg-[#FFFCFA] p-2 text-center">
-                <span className="block text-[10px] uppercase tracking-widest text-[#8C7B75]">{weekdayLabel(date)}</span>
-                <span className="font-serif text-lg text-[#6B2D3A]">{score}/3</span>
+      {/* Adhkar Categories */}
+      {Object.values(ADHKAR_DATA).map((category) => {
+        const progress = getCategoryProgress(category.id);
+        const isExpanded = expandedCategory === category.id;
+
+        return (
+          <Section key={category.id} title={category.name} subtitle={`${progress.completed}/${progress.total} completed`}>
+            <div className="space-y-3">
+              {/* Progress Bar */}
+              <div className="h-2 bg-[#EAE3DE] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#6B2D3A] transition-all duration-500"
+                  style={{ width: `${progress.percent}%` }}
+                />
               </div>
-            );
-          })}
-        </div>
-      </Section>
+
+              {/* Expand/Collapse Button */}
+              <button
+                type="button"
+                onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
+                className="w-full py-2 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
+              >
+                {isExpanded ? "Hide Details" : "View Adhkar List"}
+              </button>
+
+              {/* Expanded List */}
+              {isExpanded && (
+                <div className="space-y-2 mt-3">
+                  {category.items.map((item) => {
+                    const isCompleted = completedAdhkar.has(`${category.id}_${item.id}`);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border p-3 transition-all ${
+                          isCompleted
+                            ? "border-[#6B2D3A] bg-[#F2E8EA]"
+                            : "border-[#EAE3DE] bg-[#FFFCFA]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className={`font-serif text-sm ${isCompleted ? "text-[#6B2D3A] line-through" : "text-[#1A1817]"}`}>
+                              {item.text}
+                            </p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-xs text-[#8C7B75]">{item.repetitions}x</span>
+                              {item.source && (
+                                <span className="text-xs text-[#8C7B75] italic">· {item.source}</span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleAdhkarItem(category.id, item.id)}
+                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                              isCompleted
+                                ? "border-[#6B2D3A] bg-[#6B2D3A]"
+                                : "border-[#EAE3DE] hover:border-[#D9B7BE]"
+                            }`}
+                          >
+                            {isCompleted && <span className="text-white text-xs">✓</span>}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </Section>
+        );
+      })}
     </div>
   );
 }

@@ -169,7 +169,7 @@ export default function PerfumeryPage() {
   );
 }
 
-const emptyIngredient = (): PerfumeIngredient => ({ name: "", note: "heart", amount: 0 });
+const emptyIngredient = (): PerfumeIngredient => ({ name: "", note: "heart", amount: 0, dilution: 100 });
 
 /** Increments the numeric part of the previous version label, e.g. v2 -> v3. */
 function nextLabel(previous?: PerfumeVersion): string {
@@ -182,10 +182,35 @@ function VersionForm({ formulaId, previous }: { formulaId: number; previous?: Pe
   const [date, setDate] = useState(today());
   const [observations, setObservations] = useState("");
   const [rating, setRating] = useState("");
+  const [alcoholAmount, setAlcoholAmount] = useState(previous?.alcoholAmount?.toString() ?? "");
   const [ingredients, setIngredients] = useState<PerfumeIngredient[]>(() =>
     previous ? previous.ingredients.map((item) => ({ ...item })) : [emptyIngredient()],
   );
   const [label, setLabel] = useState(() => nextLabel(previous));
+
+  // Calculate final strength percentage
+  const calculateStrength = () => {
+    let totalScentAmount = 0;
+    let totalAlcoholFromDilutions = 0;
+
+    ingredients.forEach((ingredient) => {
+      if (ingredient.amount > 0 && ingredient.dilution) {
+        const scentAmount = ingredient.amount * (ingredient.dilution / 100);
+        const alcoholAmount = ingredient.amount - scentAmount;
+        totalScentAmount += scentAmount;
+        totalAlcoholFromDilutions += alcoholAmount;
+      }
+    });
+
+    const addedAlcohol = Number(alcoholAmount) || 0;
+    const totalAlcohol = totalAlcoholFromDilutions + addedAlcohol;
+    const totalMixture = totalScentAmount + totalAlcohol;
+
+    if (totalMixture === 0) return 0;
+    return Math.round((totalScentAmount / totalMixture) * 100);
+  };
+
+  const strengthPercent = calculateStrength();
 
   function updateIngredient(index: number, patch: Partial<PerfumeIngredient>) {
     setIngredients((list) => list.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -222,7 +247,7 @@ function VersionForm({ formulaId, previous }: { formulaId: number; previous?: Pe
 
         <div className="space-y-2">
           {ingredients.map((ingredient, index) => (
-            <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_1fr_1fr_auto]">
+            <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
               <TextInput
                 placeholder="Ingredient"
                 value={ingredient.name}
@@ -240,6 +265,13 @@ function VersionForm({ formulaId, previous }: { formulaId: number; previous?: Pe
                 value={ingredient.amount || ""}
                 onChange={(e) => updateIngredient(index, { amount: Number(e.target.value) })}
               />
+              <TextInput
+                type="number"
+                step="1"
+                placeholder="Dilution %"
+                value={ingredient.dilution || ""}
+                onChange={(e) => updateIngredient(index, { dilution: Number(e.target.value) })}
+              />
               <button
                 type="button"
                 onClick={() => setIngredients((list) => list.filter((_, i) => i !== index))}
@@ -253,6 +285,24 @@ function VersionForm({ formulaId, previous }: { formulaId: number; previous?: Pe
           <Button size="sm" variant="ghost" onClick={() => setIngredients((list) => [...list, emptyIngredient()])}>
             Add ingredient
           </Button>
+        </div>
+
+        {/* Alcohol Amount and Strength Calculation */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Alcohol amount" hint="Additional alcohol to add to the mixture">
+            <TextInput
+              type="number"
+              step="0.1"
+              placeholder="Alcohol amount"
+              value={alcoholAmount}
+              onChange={(e) => setAlcoholAmount(e.target.value)}
+            />
+          </Field>
+          <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-xl p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Final strength</p>
+            <p className="font-mono text-2xl text-[#6B2D3A]">{strengthPercent}%</p>
+            <p className="text-xs text-[#8C7B75]">scent concentration</p>
+          </div>
         </div>
 
         <Field label="Observations" hint="How it smelled, what changed, what to try next">

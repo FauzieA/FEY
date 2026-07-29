@@ -10,7 +10,6 @@ import WorkoutHeader from "@/components/workout/WorkoutHeader";
 import RestTimerBar from "@/components/workout/RestTimerBar";
 import SetsTable, {type SetItem } from "@/components/workout/SetsTable";
 import ExerciseNotes from "@/components/workout/ExerciseNotes";
-import DailyHabitsModal from "@/components/workout/DailyHabitsModal";
 
 export default function WorkoutPage() {
   const [searchParams] = useSearchParams();
@@ -18,7 +17,7 @@ export default function WorkoutPage() {
 
   const exerciseId = searchParams.get("id") || "lb_squat";
   const rawFrom = searchParams.get("from");
-  const returnTo = rawFrom ? decodeURIComponent(rawFrom) : "/workout";
+  const returnTo = rawFrom ? decodeURIComponent(rawFrom) : "/training";
 
   const exercise = useMemo(
     () =>
@@ -51,7 +50,6 @@ export default function WorkoutPage() {
   });
 
   const [notes, setNotes] = useState("Felt solid today. Kept good form.");
-  const [isHabitsModalOpen, setIsHabitsModalOpen] = useState(false);
 
   // Active Set Timer State
   const [activeTimerIndex, setActiveTimerIndex] = useState<number | null>(null);
@@ -211,7 +209,6 @@ export default function WorkoutPage() {
         ],
       });
 
-      setIsHabitsModalOpen(false);
       navigate(returnTo);
     } catch (error) {
       console.error("Error saving exercise session:", error);
@@ -262,17 +259,12 @@ export default function WorkoutPage() {
       <ExerciseNotes notes={notes} onChangeNotes={setNotes} />
 
       <button
-        onClick={() => setIsHabitsModalOpen(true)}
+        onClick={handleFinishSession}
         className="w-full bg-[#6B2D3A] text-[#F8F5F2] hover:bg-[#58242F] font-serif text-sm sm:text-base py-3.5 sm:py-4 rounded-2xl sm:rounded-3xl shadow-lg shadow-[#6B2D3A]/20 transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
       >
         <Check className="w-5 h-5" />
         <span>Complete Exercise Session</span>
       </button>
-
-      <DailyHabitsModal
-        isOpen={isHabitsModalOpen}
-        onClose={handleFinishSession}
-      />
     </div>
   );
 }

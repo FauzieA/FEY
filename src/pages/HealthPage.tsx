@@ -121,11 +121,55 @@ function WeightTab() {
 function MeasurementsTab() {
   const snapshot = useFeySnapshot();
   const [form, setForm] = useState({ date: today(), waistCm: "", hipsCm: "", chestCm: "", thighCm: "", armCm: "", notes: "" });
-  const measurements = [...snapshot.measurements].sort((a, b) => b.date.localeCompare(a.date));
+  const [selectedBodyPart, setSelectedBodyPart] = useState<"waistCm" | "hipsCm" | "chestCm" | "thighCm" | "armCm">("waistCm");
+  const measurements = [...snapshot.measurements].sort((a, b) => a.date.localeCompare(b.date));
+
+  const bodyPartLabels = {
+    waistCm: "Waist",
+    hipsCm: "Hips",
+    chestCm: "Chest",
+    thighCm: "Thigh",
+    armCm: "Arm",
+  };
+
+  const trendData = measurements
+    .map((entry) => ({
+      label: formatShortDate(entry.date),
+      value: entry[selectedBodyPart] || 0,
+    }))
+    .filter((entry) => entry.value > 0);
 
   return (
     <div className="space-y-6">
       <Section title="Monthly measurements" subtitle="Taken once a month, same conditions each time">
+        {/* Body Part Filter */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {(Object.keys(bodyPartLabels) as Array<keyof typeof bodyPartLabels>).map((part) => (
+            <button
+              key={part}
+              type="button"
+              onClick={() => setSelectedBodyPart(part)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                selectedBodyPart === part
+                  ? "bg-[#6B2D3A] text-white"
+                  : "bg-[#FFFCFA] border border-[#EAE3DE] text-[#8C7B75] hover:border-[#D9B7BE]"
+              }`}
+            >
+              {bodyPartLabels[part]}
+            </button>
+          ))}
+        </div>
+
+        {/* Trend Chart */}
+        <TrendChart
+          data={trendData}
+          kind="line"
+          unit=" cm"
+          emptyLabel={`Log ${bodyPartLabels[selectedBodyPart]} measurements to see trend`}
+        />
+      </Section>
+
+      <Section title="Log measurements">
         <InlineForm
           title="Add measurements"
           onSubmit={async () => {
@@ -252,6 +296,7 @@ function SleepTab() {
 function CycleTab() {
   const snapshot = useFeySnapshot();
   const [form, setForm] = useState({ startDate: today(), symptoms: "", flow: "3" });
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const cycles = [...snapshot.cycleLogs].sort((a, b) => b.startDate.localeCompare(a.startDate));
   const active = cycles.find((cycle) => !cycle.endDate);
 
@@ -261,8 +306,84 @@ function CycleTab() {
     .filter((gap): gap is number => gap !== null);
   const averageCycle = gaps.length ? Math.round(average(gaps)) : 28;
 
+  // Calculate current phase
+  const getCurrentPhase = () => {
+    if (!active) return { phase: "No active cycle", symptoms: "Start tracking to see phase info" };
+    const currentDay = daysBetween(active.startDate) + 1;
+    
+    if (currentDay <= 5) {
+      return { phase: "Menstrual", symptoms: "Lower energy, rest needed, focus on self-care" };
+    } else if (currentDay <= 13) {
+      return { phase: "Follicular", symptoms: "Rising energy, good time for new projects, social activities" };
+    } else if (currentDay <= 16) {
+      return { phase: "Ovulation", symptoms: "Peak energy, confidence high, great for important tasks" };
+    } else {
+      return { phase: "Luteal", symptoms: "Energy declining, focus on completing tasks, self-reflection" };
+    }
+  };
+
+  const currentPhase = getCurrentPhase();
+
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const year = selectedMonth.getFullYear();
+    const month = selectedMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDayOfWeek = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+
+    const days = [];
+    
+    // Empty cells for days before the first of the month
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Check if this date falls within any cycle
+      const cycleForDay = cycles.find(cycle => {
+        const start = new Date(cycle.startDate);
+        const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
+        return date >= start && date <= end;
+      });
+      
+      days.push({
+        date: dateStr,
+        day,
+        inCycle: !!cycleForDay,
+        cycle: cycleForDay,
+      });
+    }
+    
+    return days;
+  };
+
+  const calendarDays = generateCalendarDays();
+
   return (
     <div className="space-y-6">
+      {/* Current Phase Info */}
+      {active && (
+        <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Current Phase</p>
+              <p className="font-serif text-lg text-[#6B2D3A]">{currentPhase.phase}</p>
+              <p className="text-xs text-[#8C7B75] mt-1">{currentPhase.symptoms}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Cycle Day</p>
+              <p className="font-mono text-lg text-[#1A1817]">{daysBetween(active.startDate) + 1}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <StatTile label="Average cycle" value={`${averageCycle} days`} hint={gaps.length ? `from ${gaps.length} cycles` : "assumed until tracked"} />
         <StatTile
@@ -272,7 +393,54 @@ function CycleTab() {
         />
       </div>
 
-      <Section title="Cycles">
+      {/* Calendar View */}
+      <Section title="Cycle Calendar">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            type="button"
+            onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))}
+            className="px-3 py-1 rounded-lg border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer"
+          >
+            ←
+          </button>
+          <p className="font-serif text-lg text-[#1A1817]">
+            {selectedMonth.toLocaleDateString('default', { month: 'long', year: 'numeric' })}
+          </p>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
+            className="px-3 py-1 rounded-lg border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer"
+          >
+            →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <p key={day} className="text-center text-xs font-medium text-[#8C7B75]">{day}</p>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {calendarDays.map((day, index) => (
+            <div
+              key={index}
+              className={`aspect-square rounded-lg flex items-center justify-center text-sm cursor-pointer transition-colors ${
+                day
+                  ? day.inCycle
+                    ? 'bg-[#6B2D3A] text-white'
+                    : 'bg-[#FFFCFA] border border-[#EAE3DE] text-[#1A1817] hover:border-[#D9B7BE]'
+                  : 'bg-transparent'
+              }`}
+              onClick={() => day && setForm({ ...form, startDate: day.date })}
+            >
+              {day?.day || ''}
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Log Cycle">
         <InlineForm
           title="Start a cycle"
           onSubmit={async () => {

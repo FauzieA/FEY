@@ -46,7 +46,7 @@ export default function WeeklyProgressCard({
           Select exercises freely from your split.
         </div>
         <button
-          onClick={() => navigate("/workout?session=custom")}
+          onClick={() => navigate("/training")}
           className="bg-[#6B2D3A] text-[#F8F5F2] text-xs md:text-sm font-medium px-5 py-3 rounded-2xl shadow-md shadow-[#6B2D3A]/20 flex items-center gap-2 hover:bg-[#58242F] transition-all cursor-pointer"
         >
           <Dumbbell className="w-4 h-4" />

@@ -171,7 +171,11 @@ export interface Book {
   notes?: string;
   /** Waiting Room: sequel not yet released. */
   seriesName?: string;
+  sequelTo?: string;
   expectedReleaseDate?: string;
+  /** Favorite quotes and footnotes while reading */
+  quotes?: string[];
+  footnotes?: string[];
 }
 
 export interface ReadingSession {
@@ -190,6 +194,8 @@ export interface PerfumeIngredient {
   note: "top" | "heart" | "base";
   /** Amount in drops or grams, unit is recorded on the version. */
   amount: number;
+  /** Dilution percentage (e.g., 20 means 20% scent, 80% alcohol/carrier) */
+  dilution?: number;
 }
 
 export interface PerfumeFormula {
@@ -207,6 +213,8 @@ export interface PerfumeVersion {
   date: string;
   unit: "drops" | "g" | "ml";
   ingredients: PerfumeIngredient[];
+  /** Total alcohol amount in the formula */
+  alcoholAmount?: number;
   /** Development history / what changed and how it smelled. */
   observations?: string;
   rating?: number;

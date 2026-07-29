@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -10,19 +10,18 @@ import { ListRow } from "@/components/ui/ListRow";
 import { InlineForm } from "@/components/ui/InlineForm";
 import { Field, Select, TextInput } from "@/components/ui/Field";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { TrendChart } from "@/components/ui/TrendChart";
 import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { TrainingRepository } from "@/repositories/trainingRepository";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
-import { formatDate, formatShortDate, startOfWeek, toISODate, today, weekDates, weekdayLabel } from "@/utils/date";
+import { formatDate, startOfWeek, toISODate, today, weekDates, weekdayLabel } from "@/utils/date";
 import { formatNumber, percent } from "@/utils/format";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "log", label: "Log a workout" },
   { id: "history", label: "Exercise history" },
-  { id: "progression", label: "Progression" },
-  { id: "analytics", label: "Analytics" },
+  { id: "weekly-summary", label: "Weekly Summary" },
+  { id: "evolution", label: "Evolution" },
 ];
 
 const TRACKS = [
@@ -30,7 +29,6 @@ const TRACKS = [
   { path: "/daily", title: "Daily Movement Queue", blurb: "Posture, grip and movement-skill work to do every day." },
   { path: "/class-day", title: "Class Day", blurb: "Low-fatigue routines for active recovery and quick energy burn." },
   { path: "/history", title: "Weekly Summary & Logs", blurb: "Past sessions, volume totals and historical achievements." },
-  { path: "/evolution", title: "Evolution", blurb: "Muscle map, performance trends and then-versus-now." },
 ];
 
 export default function TrainingPage() {
@@ -39,7 +37,7 @@ export default function TrainingPage() {
 
   const weekStart = startOfWeek();
   const sessionsThisWeek = snapshot.sessions.filter((session) => toISODate(session.completedAt) >= weekStart);
-  const totalVolume = snapshot.sessions.reduce((sum, session) => sum + (session.totalVolumeKg ?? 0), 0);
+  const weeklyCompletionPercent = percent(sessionsThisWeek.length, 5);
 
   return (
     <div className="space-y-6">
@@ -50,9 +48,9 @@ export default function TrainingPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Sessions this week" value={`${sessionsThisWeek.length} / 5`} tone="burgundy" />
+        <StatTile label="Weekly completion" value={`${weeklyCompletionPercent}%`} tone="burgundy" />
+        <StatTile label="Sessions this week" value={`${sessionsThisWeek.length} / 5`} />
         <StatTile label="All-time sessions" value={snapshot.sessions.length} />
-        <StatTile label="Volume lifted" value={`${formatNumber(totalVolume)} kg`} />
         <StatTile label="Personal records" value={snapshot.xpEvents.filter((e) => e.activity === "personal_record").length} />
       </div>
 
@@ -61,8 +59,8 @@ export default function TrainingPage() {
       {tab === "overview" && <OverviewTab />}
       {tab === "log" && <LogTab />}
       {tab === "history" && <HistoryTab />}
-      {tab === "progression" && <ProgressionTab />}
-      {tab === "analytics" && <AnalyticsTab />}
+      {tab === "weekly-summary" && <WeeklySummaryTab />}
+      {tab === "evolution" && <EvolutionTab />}
     </div>
   );
 }
@@ -242,110 +240,70 @@ function HistoryTab() {
   );
 }
 
-function ProgressionTab() {
-  const snapshot = useFeySnapshot();
-  const records = useMemo(() => TrainingRepository.flattenSets(snapshot.sessions), [snapshot.sessions]);
-  const exercises = useMemo(
-    () => [...new Map(records.map((record) => [record.exerciseId, record.exerciseName])).entries()],
-    [records],
-  );
-  const [exerciseId, setExerciseId] = useState<string>("");
-
-  const active = exerciseId || exercises[0]?.[0] || "";
-  const forExercise = records.filter((record) => record.exerciseId === active);
-
-  const bestByDate = new Map<string, number>();
-  for (const record of forExercise) {
-    bestByDate.set(record.date, Math.max(bestByDate.get(record.date) ?? 0, record.weightKg));
-  }
-  const series = [...bestByDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, value]) => ({ label: formatShortDate(date), value }));
-
-  return (
-    <Section title="Exercise progression" subtitle="Top set per session for one exercise">
-      {exercises.length === 0 ? (
-        <EmptyState title="No exercise data yet" hint="Log a workout with weights to see progression." />
-      ) : (
-        <>
-          <Field label="Exercise" className="max-w-sm">
-            <Select value={active} onChange={(e) => setExerciseId(e.target.value)}>
-              {exercises.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <TrendChart data={series} unit=" kg" emptyLabel="No weighted sets for this exercise" />
-
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile label="Best set" value={`${Math.max(0, ...forExercise.map((r) => r.weightKg))} kg`} />
-            <StatTile label="Sessions" value={bestByDate.size} />
-            <StatTile label="Total sets" value={forExercise.length} />
-            <StatTile label="Total volume" value={`${formatNumber(forExercise.reduce((sum, r) => sum + r.volumeKg, 0))} kg`} />
-          </div>
-        </>
-      )}
-    </Section>
-  );
-}
-
-function AnalyticsTab() {
+function WeeklySummaryTab() {
+  const navigate = useNavigate();
   const snapshot = useFeySnapshot();
 
-  const volumeByWeek = new Map<string, number>();
-  const sessionsByWeek = new Map<string, number>();
-  for (const session of snapshot.sessions) {
-    const week = startOfWeek(toISODate(session.completedAt));
-    volumeByWeek.set(week, (volumeByWeek.get(week) ?? 0) + (session.totalVolumeKg ?? 0));
-    sessionsByWeek.set(week, (sessionsByWeek.get(week) ?? 0) + 1);
-  }
+  const weekStart = startOfWeek();
+  const sessionsThisWeek = snapshot.sessions.filter((session) => toISODate(session.completedAt) >= weekStart);
 
-  const volumeSeries = [...volumeByWeek.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-10)
-    .map(([week, value]) => ({ label: formatShortDate(week), value: Math.round(value) }));
-
-  const sessionSeries = [...sessionsByWeek.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-10)
-    .map(([week, value]) => ({ label: formatShortDate(week), value }));
-
-  const byCategory = new Map<string, number>();
-  for (const record of TrainingRepository.flattenSets(snapshot.sessions)) {
-    const category = EXERCISE_DATABASE.find((exercise) => exercise.id === record.exerciseId)?.category ?? "other";
-    byCategory.set(category, (byCategory.get(category) ?? 0) + record.volumeKg);
-  }
+  const totalVolume = sessionsThisWeek.reduce((sum, session) => sum + (session.totalVolumeKg ?? 0), 0);
+  const totalSets = sessionsThisWeek.reduce((sum, session) => {
+    return sum + (session.exercises ?? []).reduce((exSum, ex) => exSum + (ex.sets ?? []).length, 0);
+  }, 0);
 
   return (
     <div className="space-y-6">
-      <Section title="Volume per week">
-        <TrendChart data={volumeSeries} kind="bar" unit=" kg" emptyLabel="Log sessions to build weekly volume" />
+      <Section title="This week's summary">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Sessions" value={sessionsThisWeek.length} tone="burgundy" />
+          <StatTile label="Volume" value={`${formatNumber(totalVolume)} kg`} />
+          <StatTile label="Total sets" value={totalSets} />
+          <StatTile label="Completion" value={`${percent(sessionsThisWeek.length, 5)}%`} />
+        </div>
       </Section>
 
-      <Section title="Sessions per week">
-        <TrendChart data={sessionSeries} kind="line" emptyLabel="Log sessions to build weekly frequency" />
+      <Section title="Recent sessions">
+        <div className="space-y-2">
+          {sessionsThisWeek.slice(0, 5).map((session) => (
+            <ListRow
+              key={session.id}
+              title={session.planTitle ?? session.exercises?.[0]?.exerciseName ?? "Session"}
+              subtitle={formatDate(String(session.completedAt))}
+              meta={`${formatNumber(session.totalVolumeKg ?? 0)} kg`}
+            />
+          ))}
+          {sessionsThisWeek.length === 0 && (
+            <EmptyState title="No sessions this week" hint="Complete workouts to see your weekly summary." />
+          )}
+        </div>
       </Section>
 
-      <Section title="Volume by category">
-        {byCategory.size === 0 ? (
-          <EmptyState title="No category data yet" />
-        ) : (
-          <div className="space-y-3 rounded-2xl border border-[#EAE3DE] bg-[#FFFCFA] p-4">
-            {[...byCategory.entries()]
-              .sort(([, a], [, b]) => b - a)
-              .map(([category, volume]) => (
-                <ProgressBar
-                  key={category}
-                  value={percent(volume, Math.max(...byCategory.values()))}
-                  label={category.replace(/_/g, " ")}
-                  caption={`${formatNumber(volume)} kg`}
-                />
-              ))}
-          </div>
-        )}
+      <button
+        onClick={() => navigate("/history")}
+        className="w-full py-3 rounded-2xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors cursor-pointer"
+      >
+        View Full History
+      </button>
+    </div>
+  );
+}
+
+function EvolutionTab() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="space-y-6">
+      <Section title="Evolution Dashboard" subtitle="Muscle map, performance trends and then-versus-now">
+        <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl p-6 text-center">
+          <p className="text-[#8C7B75] mb-4">Access the full evolution dashboard with detailed analytics</p>
+          <button
+            onClick={() => navigate("/evolution")}
+            className="px-6 py-3 rounded-2xl bg-[#6B2D3A] text-white hover:bg-[#58242F] transition-colors cursor-pointer"
+          >
+            Open Evolution Page
+          </button>
+        </div>
       </Section>
     </div>
   );
