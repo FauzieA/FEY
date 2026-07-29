@@ -167,13 +167,13 @@ function CurrentTab() {
                 <ProgressBar value={percent(book.currentPage, book.totalPages)} caption={`${percent(book.currentPage, book.totalPages)}%`} />
                 
                 {/* Expand/Collapse for quotes and footnotes */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedBook(expandedBook === book.id ? null : book.id)}
-                  className="w-full py-2 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
-                >
-                  {expandedBook === book.id ? "Hide Notes" : "Add Quotes & Footnotes"}
-                </button>
+               <button
+  type="button"
+  onClick={() => setExpandedBook(expandedBook === book.id ? null : (book.id ?? null))}
+  className="w-full py-2 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
+>
+  {expandedBook === book.id ? "Hide Notes" : "Add Quotes & Footnotes"}
+</button>
 
                 {expandedBook === book.id && (
                   <div className="space-y-3 mt-3">

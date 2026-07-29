@@ -14,7 +14,7 @@ import { PRAYER_NAMES, type MemorizationStatus, type PrayerName } from "@/types/
 import { formatDate, today, weekdayLabel, weekDates, currentStreak, relativeDay } from "@/utils/date";
 import { titleCase } from "@/utils/format";
 import { getRandomPrayerQuote } from "@/data/prayerQuotes";
-import { ADHKAR_DATA, getRandomIstighfarQuote } from "@/data/adhkarData";
+import { ADHKAR_DATA, getDailyIstighfarQuote } from "@/data/adhkarData";
 
 const TABS = [
   { id: "prayer", label: "Prayer" },
@@ -330,7 +330,7 @@ function AdhkarTab() {
   const [completedAdhkar, setCompletedAdhkar] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setIstighfarQuote(getRandomIstighfarQuote());
+    setIstighfarQuote(getDailyIstighfarQuote());
   }, []);
 
   const toggleAdhkarItem = (categoryId: string, itemId: string) => {
@@ -413,12 +413,12 @@ function AdhkarTab() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <p className={`font-serif text-sm ${isCompleted ? "text-[#6B2D3A] line-through" : "text-[#1A1817]"}`}>
-                              {item.text}
+                              {item.arabic}
                             </p>
                             <div className="mt-1 flex items-center gap-2">
                               <span className="text-xs text-[#8C7B75]">{item.repetitions}x</span>
-                              {item.source && (
-                                <span className="text-xs text-[#8C7B75] italic">· {item.source}</span>
+                              {item.benefit && (
+                                <span className="text-xs text-[#8C7B75] italic">· {item.benefit}</span>
                               )}
                             </div>
                           </div>
