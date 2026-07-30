@@ -37,15 +37,19 @@ interface CheckRowProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: string;
+  disabled?: boolean;
 }
 
-export function CheckRow({ label, checked, onChange, hint }: CheckRowProps) {
+export function CheckRow({ label, checked, onChange, hint, disabled = false }: CheckRowProps) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
       className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
-        checked
+        disabled
+          ? "border-[#EAE3DE]/50 bg-[#F8F5F2] text-[#C4B7B1] cursor-not-allowed"
+          : checked
           ? "border-[#6B2D3A]/40 bg-[#F2E8EA] text-[#6B2D3A]"
           : "border-[#EAE3DE] bg-[#FFFCFA] text-[#1A1817] hover:border-[#D9B7BE]"
       }`}
@@ -56,7 +60,11 @@ export function CheckRow({ label, checked, onChange, hint }: CheckRowProps) {
       </span>
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold ${
-          checked ? "border-[#6B2D3A] bg-[#6B2D3A] text-[#F8F5F2]" : "border-[#D9B7BE] text-transparent"
+          disabled
+            ? "border-[#EAE3DE]/50 text-[#C4B7B1]"
+            : checked
+            ? "border-[#6B2D3A] bg-[#6B2D3A] text-[#F8F5F2]"
+            : "border-[#D9B7BE] text-transparent"
         }`}
       >
         ✓

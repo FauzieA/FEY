@@ -38,7 +38,7 @@ export default function FaithPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Worship & Consistency"
-        title="Faith"
+        title="Islam"
         description="Prayer, Qur'an reading, memorization, revision, adhkar and the fasts I still owe."
       />
 
@@ -79,6 +79,16 @@ function PrayerTab() {
     asr: "16:00",
     maghrib: "18:45",
     isha: "20:00",
+  };
+
+  // Check if a specific prayer time has arrived
+  const isPrayerTimeAvailable = (prayerName: PrayerName): boolean => {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const prayerTime = prayerTimes[prayerName];
+    const [hours, minutes] = prayerTime.split(":").map(Number);
+    const prayerMinutes = hours * 60 + minutes;
+    return currentMinutes >= prayerMinutes;
   };
 
   useEffect(() => {
@@ -147,14 +157,19 @@ function PrayerTab() {
 
       <Section title="Today" subtitle={formatDate(todayIso)}>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {PRAYER_NAMES.map((name) => (
-            <CheckRow
-              key={name}
-              label={titleCase(name)}
-              checked={Boolean(log?.prayers?.[name])}
-              onChange={() => void FaithRepository.togglePrayer(todayIso, name as PrayerName)}
-            />
-          ))}
+          {PRAYER_NAMES.map((name) => {
+            const isAvailable = isPrayerTimeAvailable(name as PrayerName);
+            return (
+              <CheckRow
+                key={name}
+                label={titleCase(name)}
+                checked={Boolean(log?.prayers?.[name])}
+                onChange={() => void FaithRepository.togglePrayer(todayIso, name as PrayerName)}
+                disabled={!isAvailable}
+                hint={!isAvailable ? `Available at ${prayerTimes[name as keyof typeof prayerTimes]}` : undefined}
+              />
+            );
+          })}
         </div>
       </Section>
 
@@ -206,24 +221,23 @@ function QuranTab() {
   const snapshot = useFeySnapshot();
   const [memo, setMemo] = useState({ surah: "", fromAyah: "1", toAyah: "", status: "learning" as MemorizationStatus });
 
-  // Calculate memorization stats
-  const totalMemorizedVerses = snapshot.memorization
-    .filter((m) => m.status === "memorized")
-    .reduce((sum, m) => sum + (m.toAyah - m.fromAyah + 1), 0);
-  
-  const totalInProgressVerses = snapshot.memorization
-    .filter((m) => m.status === "learning" || m.status === "needs-work")
-    .reduce((sum, m) => sum + (m.toAyah - m.fromAyah + 1), 0);
-
-  const totalVerses = totalMemorizedVerses + totalInProgressVerses;
-  const memorizationPercent = totalVerses > 0 ? Math.round((totalMemorizedVerses / totalVerses) * 100) : 0;
-
-  const uniqueSurahs = new Set(snapshot.memorization.map((m) => m.surah)).size;
+  // Calculate memorization stats based on 114 surahs
   const memorizedSurahs = new Set(snapshot.memorization.filter((m) => m.status === "memorized").map((m) => m.surah)).size;
+  const totalSurahs = 114;
+  const surahProgress = Math.round((memorizedSurahs / totalSurahs) * 100);
 
-  // Calculate approximate juz (1 juz ≈ 20 pages, ~6000 verses total)
-  const totalJuz = Math.round(totalVerses / 286); // Approximate verses per juz
-  const memorizedJuz = Math.round(totalMemorizedVerses / 286);
+  // Get current surah being memorized
+  const currentSurah = snapshot.memorization.find((m) => m.status === "learning" || m.status === "needs-work");
+  
+  // Calculate current surah progress
+  let currentSurahProgress = 0;
+  let currentSurahLabel = "No current surah";
+  if (currentSurah) {
+    const totalVersesInSurah = currentSurah.toAyah - currentSurah.fromAyah + 1;
+    const memorizedVersesInSurah = currentSurah.status === "memorized" ? totalVersesInSurah : Math.floor(totalVersesInSurah * 0.5); // Estimate
+    currentSurahProgress = Math.round((memorizedVersesInSurah / totalVersesInSurah) * 100);
+    currentSurahLabel = `${currentSurah.surah} (${currentSurah.fromAyah}–${currentSurah.toAyah})`;
+  }
 
   // Get passages that need revision (not reviewed in last 7 days)
   const dueRevision = [...snapshot.memorization]
@@ -234,11 +248,30 @@ function QuranTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Verses memorized" value={`${totalMemorizedVerses} / ${totalVerses}`} tone="burgundy" />
-        <StatTile label="Completion" value={`${memorizationPercent}%`} />
-        <StatTile label="Surahs" value={`${memorizedSurahs} / ${uniqueSurahs}`} />
-        <StatTile label="Juz" value={`${memorizedJuz} / ${totalJuz}`} />
+        <StatTile label="Surahs memorized" value={`${memorizedSurahs} / ${totalSurahs}`} tone="burgundy" />
+        <StatTile label="Overall progress" value={`${surahProgress}%`} />
+        <StatTile label="Current surah" value={currentSurah ? currentSurah.surah : "—"} />
+        <StatTile label="Current progress" value={currentSurah ? `${currentSurahProgress}%` : "—"} />
       </div>
+
+      {/* Current Surah Progress */}
+      {currentSurah && (
+        <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Current Surah</p>
+              <p className="font-serif text-lg text-[#6B2D3A]">{currentSurahLabel}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Progress</p>
+              <p className="font-mono text-lg text-[#1A1817]">{currentSurahProgress}%</p>
+            </div>
+          </div>
+          <div className="h-2 bg-[#EAE3DE] rounded-full overflow-hidden">
+            <div className="h-full bg-[#6B2D3A] transition-all duration-500" style={{ width: `${currentSurahProgress}%` }} />
+          </div>
+        </div>
+      )}
 
       {/* Revision Reminder */}
       {dueRevision.length > 0 && (
@@ -325,13 +358,21 @@ function QuranTab() {
 /* --------------------------------- Adhkar --------------------------------- */
 
 function AdhkarTab() {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [morningIndex, setMorningIndex] = useState(0);
+  const [eveningIndex, setEveningIndex] = useState(0);
   const [istighfarQuote, setIstighfarQuote] = useState<string>("");
   const [completedAdhkar, setCompletedAdhkar] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIstighfarQuote(getDailyIstighfarQuote());
   }, []);
+
+  // Separate morning and evening adhkar
+  const morningAdhkar = ADHKAR_DATA.morning?.items.map((item) => ({ ...item, category: "Morning", categoryId: "morning" })) || [];
+  const eveningAdhkar = ADHKAR_DATA.evening?.items.map((item) => ({ ...item, category: "Evening", categoryId: "evening" })) || [];
+
+  const currentMorning = morningAdhkar[morningIndex];
+  const currentEvening = eveningAdhkar[eveningIndex];
 
   const toggleAdhkarItem = (categoryId: string, itemId: string) => {
     const key = `${categoryId}_${itemId}`;
@@ -346,103 +387,157 @@ function AdhkarTab() {
     });
   };
 
-  const getCategoryProgress = (categoryId: string) => {
-    const category = ADHKAR_DATA[categoryId];
-    if (!category) return { completed: 0, total: 0, percent: 0 };
-    const total = category.items.length;
-    const completed = category.items.filter((item) => completedAdhkar.has(`${categoryId}_${item.id}`)).length;
-    return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  const isCompleted = (categoryId: string, itemId: string) => completedAdhkar.has(`${categoryId}_${itemId}`);
+  const completedCount = completedAdhkar.size;
+  const totalAdhkar = morningAdhkar.length + eveningAdhkar.length;
+
+  const goToPrevious = (type: "morning" | "evening") => {
+    if (type === "morning") {
+      setMorningIndex((prev) => (prev > 0 ? prev - 1 : morningAdhkar.length - 1));
+    } else {
+      setEveningIndex((prev) => (prev > 0 ? prev - 1 : eveningAdhkar.length - 1));
+    }
+  };
+
+  const goToNext = (type: "morning" | "evening") => {
+    if (type === "morning") {
+      setMorningIndex((prev) => (prev < morningAdhkar.length - 1 ? prev + 1 : 0));
+    } else {
+      setEveningIndex((prev) => (prev < eveningAdhkar.length - 1 ? prev + 1 : 0));
+    }
+  };
+
+  const AdhkarCard = ({ adhkar, index, type, total }: { adhkar: any, index: number, type: "morning" | "evening", total: number }) => {
+    const completed = isCompleted(adhkar.categoryId, adhkar.id);
+    return (
+      <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">{adhkar.category}</span>
+            <h3 className="font-serif text-lg text-[#1A1817]">{adhkar.title}</h3>
+            {adhkar.subtitle && (
+              <p className="text-xs text-[#8C7B75] italic">{adhkar.subtitle}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">{index + 1} / {total}</span>
+          </div>
+        </div>
+
+        <div className="bg-[#F2E8EA] rounded-2xl p-4 mb-4">
+          <p className="text-right text-lg leading-relaxed text-[#6B2D3A] font-serif" dir="rtl">
+            {adhkar.arabic}
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <p className="text-sm text-[#1A1817] leading-relaxed">{adhkar.translation}</p>
+        </div>
+
+        <div className="flex items-center gap-4 mb-4">
+          <div className="bg-[#F8F5F2] rounded-xl px-3 py-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Repetitions</span>
+            <span className="ml-2 font-mono text-[#6B2D3A]">{adhkar.repetitions}x</span>
+          </div>
+          {adhkar.shortBenefit && (
+            <div className="flex-1">
+              <p className="text-xs text-[#8C7B75] italic">{adhkar.shortBenefit}</p>
+            </div>
+          )}
+        </div>
+
+        {adhkar.benefit && (
+          <div className="bg-[#F8F5F2] rounded-xl p-3 mb-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75] mb-1">Benefit</p>
+            <p className="text-xs text-[#1A1817] leading-relaxed">{adhkar.benefit}</p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => goToPrevious(type)}
+            className="flex-1 py-3 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
+          >
+            ← Previous
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => toggleAdhkarItem(adhkar.categoryId, adhkar.id)}
+            className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+              completed
+                ? "bg-[#6B2D3A] text-white"
+                : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#6B2D3A] hover:text-white"
+            }`}
+          >
+            {completed ? "✓ Completed" : "Mark Complete"}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => goToNext(type)}
+            className="flex-1 py-3 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Istighfar Reminder */}
       <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
         <p className="text-sm italic text-[#6B2D3A] text-center">{istighfarQuote}</p>
       </div>
 
       <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl p-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Istighfar Reminder</p>
-          <p className="font-serif text-lg text-[#1A1817]">Seek forgiveness throughout the day</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Today's Progress</p>
+          <p className="font-serif text-lg text-[#1A1817]">{completedCount} / {totalAdhkar} completed</p>
         </div>
-        <Button size="sm" variant="rose" onClick={() => alert("Remember to say Astaghfirullah frequently throughout the day")}>
-          Remind Me
-        </Button>
+        <div className="h-2 bg-[#EAE3DE] rounded-full overflow-hidden w-32">
+          <div
+            className="h-full bg-[#6B2D3A] transition-all duration-500"
+            style={{ width: `${(completedCount / totalAdhkar) * 100}%` }}
+          />
+        </div>
       </div>
 
-      {/* Adhkar Categories */}
-      {Object.values(ADHKAR_DATA).map((category) => {
-        const progress = getCategoryProgress(category.id);
-        const isExpanded = expandedCategory === category.id;
+      {/* Morning Adhkar */}
+      <Section title="Morning Adhkar">
+        {currentMorning && <AdhkarCard adhkar={currentMorning} index={morningIndex} type="morning" total={morningAdhkar.length} />}
+        <div className="flex justify-center gap-1 mt-4">
+          {morningAdhkar.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => setMorningIndex(index)}
+              className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
+                index === morningIndex ? "bg-[#6B2D3A]" : "bg-[#EAE3DE]"
+              }`}
+            />
+          ))}
+        </div>
+      </Section>
 
-        return (
-          <Section key={category.id} title={category.name} subtitle={`${progress.completed}/${progress.total} completed`}>
-            <div className="space-y-3">
-              {/* Progress Bar */}
-              <div className="h-2 bg-[#EAE3DE] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#6B2D3A] transition-all duration-500"
-                  style={{ width: `${progress.percent}%` }}
-                />
-              </div>
-
-              {/* Expand/Collapse Button */}
-              <button
-                type="button"
-                onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
-                className="w-full py-2 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
-              >
-                {isExpanded ? "Hide Details" : "View Adhkar List"}
-              </button>
-
-              {/* Expanded List */}
-              {isExpanded && (
-                <div className="space-y-2 mt-3">
-                  {category.items.map((item) => {
-                    const isCompleted = completedAdhkar.has(`${category.id}_${item.id}`);
-                    return (
-                      <div
-                        key={item.id}
-                        className={`rounded-xl border p-3 transition-all ${
-                          isCompleted
-                            ? "border-[#6B2D3A] bg-[#F2E8EA]"
-                            : "border-[#EAE3DE] bg-[#FFFCFA]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <p className={`font-serif text-sm ${isCompleted ? "text-[#6B2D3A] line-through" : "text-[#1A1817]"}`}>
-                              {item.arabic}
-                            </p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="text-xs text-[#8C7B75]">{item.repetitions}x</span>
-                              {item.benefit && (
-                                <span className="text-xs text-[#8C7B75] italic">· {item.benefit}</span>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleAdhkarItem(category.id, item.id)}
-                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                              isCompleted
-                                ? "border-[#6B2D3A] bg-[#6B2D3A]"
-                                : "border-[#EAE3DE] hover:border-[#D9B7BE]"
-                            }`}
-                          >
-                            {isCompleted && <span className="text-white text-xs">✓</span>}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </Section>
-        );
-      })}
+      {/* Evening Adhkar */}
+      <Section title="Evening Adhkar">
+        {currentEvening && <AdhkarCard adhkar={currentEvening} index={eveningIndex} type="evening" total={eveningAdhkar.length} />}
+        <div className="flex justify-center gap-1 mt-4">
+          {eveningAdhkar.map((_, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => setEveningIndex(index)}
+              className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
+                index === eveningIndex ? "bg-[#6B2D3A]" : "bg-[#EAE3DE]"
+              }`}
+            />
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

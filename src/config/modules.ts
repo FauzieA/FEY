@@ -25,8 +25,8 @@ export interface ModuleDefinition {
 
 export const MODULES: ModuleDefinition[] = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, tagline: "Today at a glance", primary: true },
+  { id: "faith", label: "Islam", path: "/faith", icon: Moon, tagline: "Prayer, Qur'an, adhkar, fasts" },
   { id: "training", label: "Training", path: "/training", icon: Dumbbell, tagline: "Workouts, progression, analytics", primary: true },
-  { id: "faith", label: "Faith", path: "/faith", icon: Moon, tagline: "Prayer, Qur'an, adhkar, fasts" },
   { id: "health", label: "Health", path: "/health", icon: Heart, tagline: "Body, sleep, cycle, measurements" },
   { id: "library", label: "Library", path: "/library", icon: BookOpen, tagline: "Reading, finished books, waiting room" },
   { id: "perfumery", label: "Perfumery", path: "/perfumery", icon: FlaskConical, tagline: "Formulas, versions, development" },

@@ -131,6 +131,11 @@ export interface SleepLog {
   id?: number;
   /** Date the night started. */
   date: string;
+  /** Start time in HH:MM format */
+  startTime: string;
+  /** End time in HH:MM format */
+  endTime: string;
+  /** Calculated hours (derived from start/end times) */
   hours: number;
   /** Self-assessed quality, 1 to 5. */
   quality: number;
@@ -144,6 +149,26 @@ export interface CycleLog {
   symptoms?: string;
   /** Self-assessed flow, 1 (light) to 5 (heavy). */
   flow?: number;
+  /** Average cycle length learned from previous cycles */
+  learnedAverageCycle?: number;
+}
+
+export interface CycleSymptomLog {
+  id?: number;
+  date: string;
+  cycleId?: number;
+  /** Current phase at the time of logging */
+  phase: "menstrual" | "follicular" | "ovulation" | "luteal";
+  /** Energy level 1-5 */
+  energy?: number;
+  /** Mood level 1-5 (1=low, 5=high) */
+  mood?: number;
+  /** Physical symptoms (cramps, headaches, etc.) */
+  physicalSymptoms?: string[];
+  /** Flow intensity 1-5 */
+  flowIntensity?: number;
+  /** Custom notes */
+  notes?: string;
 }
 
 export interface HealthNote {
@@ -229,6 +254,10 @@ export interface SavingsEntry {
   /** Optional goal this deposit belongs to. */
   goalId?: number | null;
   note?: string;
+  /** Currency code (e.g., USD, EUR, NGN, MYR) */
+  currency?: string;
+  /** Location where savings are stored (account, e-wallet, cash) */
+  location?: string;
 }
 
 export interface SavingsGoal {

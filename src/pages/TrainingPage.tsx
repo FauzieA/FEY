@@ -15,6 +15,9 @@ import { TrainingRepository } from "@/repositories/trainingRepository";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { formatDate, startOfWeek, toISODate, today, weekDates, weekdayLabel } from "@/utils/date";
 import { formatNumber, percent } from "@/utils/format";
+import HeroOverview from "@/components/evolution/HeroOverview";
+import MuscleMap from "@/components/evolution/MuscleMap";
+import PerformanceTrends from "@/components/evolution/PerformanceTrends";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -28,7 +31,6 @@ const TRACKS = [
   { path: "/weekly", title: "Weekly Gym Plan", blurb: "Structured progressive overload across push, pull, lower and core." },
   { path: "/daily", title: "Daily Movement Queue", blurb: "Posture, grip and movement-skill work to do every day." },
   { path: "/class-day", title: "Class Day", blurb: "Low-fatigue routines for active recovery and quick energy burn." },
-  { path: "/history", title: "Weekly Summary & Logs", blurb: "Past sessions, volume totals and historical achievements." },
 ];
 
 export default function TrainingPage() {
@@ -37,7 +39,17 @@ export default function TrainingPage() {
 
   const weekStart = startOfWeek();
   const sessionsThisWeek = snapshot.sessions.filter((session) => toISODate(session.completedAt) >= weekStart);
-  const weeklyCompletionPercent = percent(sessionsThisWeek.length, 5);
+  
+  // Calculate weekly completion based on exercises completed
+  const weeklyExercises = EXERCISE_DATABASE.filter((ex) => ex.tier === "weekly");
+  const completedExerciseIds = new Set<string>();
+  sessionsThisWeek.forEach((s) => {
+    s.exercises?.forEach((ex: any) => {
+      if (ex.exerciseId) completedExerciseIds.add(ex.exerciseId);
+    });
+  });
+  const completedExercisesCount = weeklyExercises.filter((ex) => completedExerciseIds.has(ex.id)).length;
+  const weeklyCompletionPercent = percent(completedExercisesCount, weeklyExercises.length);
 
   return (
     <div className="space-y-6">
@@ -49,7 +61,7 @@ export default function TrainingPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Weekly completion" value={`${weeklyCompletionPercent}%`} tone="burgundy" />
-        <StatTile label="Sessions this week" value={`${sessionsThisWeek.length} / 5`} />
+        <StatTile label="Exercises done" value={`${completedExercisesCount} / ${weeklyExercises.length}`} />
         <StatTile label="All-time sessions" value={snapshot.sessions.length} />
         <StatTile label="Personal records" value={snapshot.xpEvents.filter((e) => e.activity === "personal_record").length} />
       </div>
@@ -290,19 +302,30 @@ function WeeklySummaryTab() {
 }
 
 function EvolutionTab() {
-  const navigate = useNavigate();
+  const [timeFilter, setTimeFilter] = useState<"30D" | "3M" | "1Y" | "ALL">("30D");
 
   return (
     <div className="space-y-6">
       <Section title="Evolution Dashboard" subtitle="Muscle map, performance trends and then-versus-now">
-        <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-2xl p-6 text-center">
-          <p className="text-[#8C7B75] mb-4">Access the full evolution dashboard with detailed analytics</p>
-          <button
-            onClick={() => navigate("/evolution")}
-            className="px-6 py-3 rounded-2xl bg-[#6B2D3A] text-white hover:bg-[#58242F] transition-colors cursor-pointer"
-          >
-            Open Evolution Page
-          </button>
+        <div className="bg-white rounded-full p-1 border border-[#EAE3DE] flex shadow-xs w-fit mb-4">
+          {(["30D", "3M", "1Y", "ALL"] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setTimeFilter(filter)}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all cursor-pointer ${
+                timeFilter === filter
+                  ? "bg-[#6B2D3A] text-white shadow-xs"
+                  : "text-[#8C7B75] hover:text-[#2C2A29]"
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-8">
+          <HeroOverview timeFilter={timeFilter} />
+          <MuscleMap />
+          <PerformanceTrends />
         </div>
       </Section>
     </div>
