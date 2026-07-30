@@ -131,6 +131,11 @@ export interface SleepLog {
   id?: number;
   /** Date the night started. */
   date: string;
+  /** Start time in HH:MM format */
+  startTime: string;
+  /** End time in HH:MM format */
+  endTime: string;
+  /** Calculated hours (derived from start/end times) */
   hours: number;
   /** Self-assessed quality, 1 to 5. */
   quality: number;
@@ -144,6 +149,26 @@ export interface CycleLog {
   symptoms?: string;
   /** Self-assessed flow, 1 (light) to 5 (heavy). */
   flow?: number;
+  /** Average cycle length learned from previous cycles */
+  learnedAverageCycle?: number;
+}
+
+export interface CycleSymptomLog {
+  id?: number;
+  date: string;
+  cycleId?: number;
+  /** Current phase at the time of logging */
+  phase: "menstrual" | "follicular" | "ovulation" | "luteal";
+  /** Energy level 1-5 */
+  energy?: number;
+  /** Mood level 1-5 (1=low, 5=high) */
+  mood?: number;
+  /** Physical symptoms (cramps, headaches, etc.) */
+  physicalSymptoms?: string[];
+  /** Flow intensity 1-5 */
+  flowIntensity?: number;
+  /** Custom notes */
+  notes?: string;
 }
 
 export interface HealthNote {
@@ -171,7 +196,11 @@ export interface Book {
   notes?: string;
   /** Waiting Room: sequel not yet released. */
   seriesName?: string;
+  sequelTo?: string;
   expectedReleaseDate?: string;
+  /** Favorite quotes and footnotes while reading */
+  quotes?: string[];
+  footnotes?: string[];
 }
 
 export interface ReadingSession {
@@ -190,6 +219,8 @@ export interface PerfumeIngredient {
   note: "top" | "heart" | "base";
   /** Amount in drops or grams, unit is recorded on the version. */
   amount: number;
+  /** Dilution percentage (e.g., 20 means 20% scent, 80% alcohol/carrier) */
+  dilution?: number;
 }
 
 export interface PerfumeFormula {
@@ -207,6 +238,8 @@ export interface PerfumeVersion {
   date: string;
   unit: "drops" | "g" | "ml";
   ingredients: PerfumeIngredient[];
+  /** Total alcohol amount in the formula */
+  alcoholAmount?: number;
   /** Development history / what changed and how it smelled. */
   observations?: string;
   rating?: number;
@@ -221,6 +254,10 @@ export interface SavingsEntry {
   /** Optional goal this deposit belongs to. */
   goalId?: number | null;
   note?: string;
+  /** Currency code (e.g., USD, EUR, NGN, MYR) */
+  currency?: string;
+  /** Location where savings are stored (account, e-wallet, cash) */
+  location?: string;
 }
 
 export interface SavingsGoal {

@@ -13,7 +13,7 @@ export function BottomNav() {
 
   const navItems = [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { label: "Workout", path: "/workout", icon: Dumbbell },
+    { label: "Training", path: "/training", icon: Dumbbell },
     { label: "History", path: "/history", icon: History },
     { label: "Evolution", path: "/evolution", icon: LineChart },
     { label: "Character", path: "/character", icon: User },

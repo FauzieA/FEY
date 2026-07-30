@@ -103,17 +103,33 @@ export default function HomeDashboardPage() {
             <Link
               key={item.id}
               to={item.path}
-              className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+              className={`flex flex-col justify-between gap-2 rounded-2xl border px-4 py-3 transition-colors ${
                 item.done
                   ? "border-[#6B2D3A]/30 bg-[#F2E8EA] text-[#6B2D3A]"
                   : "border-[#EAE3DE] bg-[#FFFCFA] text-[#1A1817] hover:border-[#D9B7BE]"
               }`}
             >
-              <span>
-                <span className="block text-sm font-medium">{item.label}</span>
-                <span className="block text-[10px] uppercase tracking-widest text-[#8C7B75]">{item.module}</span>
-              </span>
-              <span className={`text-xs font-bold ${item.done ? "text-[#6B2D3A]" : "text-[#C4B7B1]"}`}>{item.done ? "✓" : "—"}</span>
+              <div className="flex items-start justify-between gap-2">
+                <span className="flex-1">
+                  <span className="block text-sm font-medium">{item.label}</span>
+                  <span className="block text-[10px] uppercase tracking-widest text-[#8C7B75]">{item.module}</span>
+                </span>
+                <span className={`text-xs font-bold ${item.done ? "text-[#6B2D3A]" : "text-[#C4B7B1]"}`}>{item.done ? "✓" : "—"}</span>
+              </div>
+              {item.progress !== undefined && item.progress > 0 && (
+                <div className="mt-1">
+                  <div className="flex items-center justify-between text-[10px] text-[#8C7B75]">
+                    <span>Progress</span>
+                    <span>{Math.round(item.progress)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-[#EAE3DE] rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-[#6B2D3A] transition-all duration-300" 
+                      style={{ width: `${item.progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </Link>
           ))}
         </div>

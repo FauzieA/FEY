@@ -15,7 +15,6 @@ import ProgressPage from "@/pages/ProgressPage";
 
 /* Original workout tracker screens, preserved in full */
 import WorkoutDashboardPage from "@/pages/DashboardPage";
-import WorkoutHubPage from "@/pages/WorkoutHubPage.tsx";
 import WorkoutPage from "@/pages/WorkoutPage";
 import WeeklySummaryPage from "@/pages/WeeklySummaryPage";
 import EvolutionPage from "@/pages/EvolutionPage";
@@ -51,7 +50,6 @@ export default function App() {
           <Route path="progress" element={<ProgressPage />} />
 
           {/* Original workout tracker routes */}
-          <Route path="workout" element={<WorkoutHubPage />} />
           <Route path="workout/session" element={<WorkoutPage />} />
           <Route path="workout/dashboard" element={<WorkoutDashboardPage />} />
           <Route path="daily" element={<DailyPage />} />

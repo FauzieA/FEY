@@ -67,11 +67,44 @@ export interface ChecklistItem {
   module: string;
   path: string;
   done: boolean;
+  progress?: number;
 }
 
 export function dailyChecklist(snapshot: FeySnapshot, date = today()): ChecklistItem[] {
   const prayerLog = snapshot.prayerLogs.find((log) => log.date === date);
   const adhkar = snapshot.adhkarLogs.find((log) => log.date === date);
+  
+  // Get current memorization progress
+  const currentMemorization = snapshot.memorization.find((m) => m.status === "learning" || m.status === "needs-work");
+  const memorizationLabel = currentMemorization 
+    ? `Memorizing: ${currentMemorization.surah} (${currentMemorization.fromAyah}-${currentMemorization.toAyah})`
+    : "Qur'an memorization";
+  
+  // Get cycle phase info
+  const activeCycle = snapshot.cycleLogs.find((cycle) => !cycle.endDate);
+  let cycleLabel = "Cycle tracking";
+  let cycleProgress = 0;
+  if (activeCycle) {
+    const currentDay = daysBetween(activeCycle.startDate) + 1;
+    if (currentDay <= 5) {
+      cycleLabel = "Menstrual Phase";
+      cycleProgress = Math.min(100, (currentDay / 5) * 100);
+    } else if (currentDay <= 13) {
+      cycleLabel = "Follicular Phase";
+      cycleProgress = Math.min(100, ((currentDay - 5) / 8) * 100);
+    } else if (currentDay <= 16) {
+      cycleLabel = "Ovulation Phase";
+      cycleProgress = Math.min(100, ((currentDay - 13) / 3) * 100);
+    } else {
+      cycleLabel = "Luteal Phase";
+      cycleProgress = Math.min(100, ((currentDay - 16) / 12) * 100);
+    }
+  }
+  
+  // Get current reading book
+  const currentBook = snapshot.books.find((b) => b.status === "reading");
+  const readingLabel = currentBook ? `Reading: ${currentBook.title}` : "Read a book";
+  const readingProgress = currentBook ? Math.round((currentBook.currentPage / currentBook.totalPages) * 100) : 0;
 
   return [
     {
@@ -80,6 +113,7 @@ export function dailyChecklist(snapshot: FeySnapshot, date = today()): Checklist
       module: "Faith",
       path: "/faith",
       done: PRAYER_NAMES.every((name) => prayerLog?.prayers?.[name]),
+      progress: PRAYER_NAMES.filter((name) => prayerLog?.prayers?.[name]).length / 5 * 100,
     },
     {
       id: "adhkar",
@@ -87,13 +121,15 @@ export function dailyChecklist(snapshot: FeySnapshot, date = today()): Checklist
       module: "Faith",
       path: "/faith",
       done: Boolean(adhkar?.morning && adhkar?.evening),
+      progress: (adhkar?.morning ? 50 : 0) + (adhkar?.evening ? 50 : 0),
     },
     {
       id: "quran",
-      label: "Qur'an reading",
+      label: memorizationLabel,
       module: "Faith",
       path: "/faith",
-      done: snapshot.quranReading.some((log) => log.date === date),
+      done: snapshot.memorization.some((m) => m.status === "memorized"),
+      progress: currentMemorization ? 50 : 0,
     },
     {
       id: "training",
@@ -103,25 +139,20 @@ export function dailyChecklist(snapshot: FeySnapshot, date = today()): Checklist
       done: snapshot.sessions.some((s) => String(s.completedAt).slice(0, 10) === date),
     },
     {
-      id: "sleep",
-      label: "Sleep logged",
+      id: "cycle",
+      label: cycleLabel,
       module: "Health",
       path: "/health",
-      done: snapshot.sleepLogs.some((log) => log.date === date),
+      done: Boolean(activeCycle),
+      progress: activeCycle ? cycleProgress : 0,
     },
     {
       id: "reading",
-      label: "Read a book",
+      label: readingLabel,
       module: "Library",
       path: "/library",
       done: snapshot.readingSessions.some((log) => log.date === date),
-    },
-    {
-      id: "journal",
-      label: "Journal entry",
-      module: "Life",
-      path: "/life",
-      done: snapshot.journalEntries.some((entry) => entry.date === date),
+      progress: readingProgress,
     },
   ];
 }

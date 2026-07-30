@@ -11,16 +11,15 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { TrendChart } from "@/components/ui/TrendChart";
 import { Button } from "@/components/common/Button";
 import { useFeySnapshot } from "@/hooks/useFeySnapshot";
-import { DEFAULT_WEALTH_PROFILE, WealthRepository, hoursOfWork } from "@/repositories/wealthRepository";
+import { DEFAULT_WEALTH_PROFILE, WealthRepository } from "@/repositories/wealthRepository";
 import type { PurchasePlan } from "@/types/modules";
 import { formatDate, monthKey, today } from "@/utils/date";
-import { formatCurrency, formatHours, percent } from "@/utils/format";
+import { formatCurrency, percent } from "@/utils/format";
 
 const TABS = [
   { id: "savings", label: "Savings" },
   { id: "goals", label: "Goals" },
   { id: "purchases", label: "Purchase planning" },
-  { id: "calculator", label: "Cost in hours" },
 ];
 
 export default function WealthPage() {
@@ -39,7 +38,7 @@ export default function WealthPage() {
       <PageHeader
         eyebrow="Stewardship"
         title="Wealth"
-        description="Savings, goals, planned purchases and what things actually cost in hours of my life."
+        description="Savings, goals, and mindful purchase planning for financial growth."
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -50,7 +49,7 @@ export default function WealthPage() {
           hint={`${percent(savedThisMonth, profile.monthlySavingsTarget)}% of ${formatCurrency(profile.monthlySavingsTarget, profile.currency)} target`}
         />
         <StatTile label="Open goals" value={openGoals.length} />
-        <StatTile label="Hourly rate" value={formatCurrency(profile.hourlyRate, profile.currency)} hint="Used by the calculator" />
+        <StatTile label="Monthly target" value={formatCurrency(profile.monthlySavingsTarget, profile.currency)} />
       </div>
 
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
@@ -58,7 +57,6 @@ export default function WealthPage() {
       {tab === "savings" && <SavingsTab />}
       {tab === "goals" && <GoalsTab />}
       {tab === "purchases" && <PurchasesTab />}
-      {tab === "calculator" && <CalculatorTab />}
     </div>
   );
 }
@@ -66,7 +64,7 @@ export default function WealthPage() {
 function SavingsTab() {
   const snapshot = useFeySnapshot();
   const profile = snapshot.wealthProfile ?? DEFAULT_WEALTH_PROFILE;
-  const [form, setForm] = useState({ date: today(), amount: "", goalId: "", note: "" });
+  const [form, setForm] = useState({ date: today(), amount: "", goalId: "", note: "", currency: profile.currency, location: "" });
 
   const byMonth = new Map<string, number>();
   for (const entry of snapshot.savingsEntries) {
@@ -91,15 +89,35 @@ function SavingsTab() {
               amount: Number(form.amount),
               goalId: form.goalId ? Number(form.goalId) : null,
               note: form.note || undefined,
+              currency: form.currency || profile.currency,
+              location: form.location || undefined,
             });
-            setForm({ date: today(), amount: "", goalId: "", note: "" });
+            setForm({ date: today(), amount: "", goalId: "", note: "", currency: profile.currency, location: "" });
           }}
         >
           <Field label="Date">
             <TextInput type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
           </Field>
-          <Field label={`Amount (${profile.currency})`}>
+          <Field label="Currency">
+            <Select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
+              <option value="USD">USD - US Dollar</option>
+              <option value="EUR">EUR - Euro</option>
+              <option value="GBP">GBP - British Pound</option>
+              <option value="NGN">NGN - Nigerian Naira</option>
+              <option value="MYR">MYR - Malaysian Ringgit</option>
+            </Select>
+          </Field>
+          <Field label="Amount">
             <TextInput type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          </Field>
+          <Field label="Location">
+            <Select value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}>
+              <option value="">Select location</option>
+              <option value="account">Bank Account</option>
+              <option value="e-wallet">E-wallet</option>
+              <option value="cash">Cash</option>
+              <option value="investment">Investment Account</option>
+            </Select>
           </Field>
           <Field label="Goal">
             <Select value={form.goalId} onChange={(e) => setForm({ ...form, goalId: e.target.value })}>
@@ -125,12 +143,14 @@ function SavingsTab() {
             .slice(0, 10)
             .map((entry) => {
               const goal = snapshot.savingsGoals.find((item) => item.id === entry.goalId);
+              const currency = entry.currency || profile.currency;
+              const location = entry.location || "General";
               return (
                 <ListRow
                   key={entry.id}
-                  title={formatCurrency(entry.amount, profile.currency)}
+                  title={formatCurrency(entry.amount, currency)}
                   subtitle={[goal?.name ?? "General savings", entry.note].filter(Boolean).join(" · ")}
-                  meta={formatDate(entry.date)}
+                  meta={`${formatDate(entry.date)} · ${currency} · ${location}`}
                 />
               );
             })}
@@ -250,14 +270,29 @@ function PurchasesTab() {
   const outstanding = planned.filter((plan) => !plan.purchasedAt);
   const outstandingTotal = outstanding.reduce((sum, plan) => sum + plan.price, 0);
 
+  // Motivational quotes about spending
+  const motivationalQuotes = [
+    "Every dollar saved is a step toward freedom.",
+    "Spend on what matters, not just what's available.",
+    "Your future self will thank you for your discipline today.",
+    "Wealth is not about having more, it's about needing less.",
+    "The best investment you can make is in yourself.",
+  ];
+  const randomQuote = motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)];
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3">
-        <StatTile label="Planned spend" value={formatCurrency(outstandingTotal, profile.currency)} hint={`${outstanding.length} items`} />
-        <StatTile label="In work hours" value={formatHours(hoursOfWork(outstandingTotal, profile.hourlyRate))} />
+      {/* Motivational Banner */}
+      <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
+        <p className="text-sm italic text-[#6B2D3A] text-center">{randomQuote}</p>
       </div>
 
-      <Section title="Purchase planning" subtitle="Everything I am considering, priced in money and in hours">
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile label="Planned spend" value={formatCurrency(outstandingTotal, profile.currency)} hint={`${outstanding.length} items`} />
+        <StatTile label="Monthly target" value={formatCurrency(profile.monthlySavingsTarget, profile.currency)} />
+      </div>
+
+      <Section title="Purchase planning" subtitle="Mindful spending aligned with your financial goals">
         <InlineForm
           title="Plan a purchase"
           onSubmit={async () => {
@@ -297,7 +332,7 @@ function PurchasesTab() {
               key={plan.id}
               title={plan.name}
               subtitle={[plan.priority, plan.notes].filter(Boolean).join(" · ")}
-              meta={`${formatCurrency(plan.price, profile.currency)} · ${formatHours(hoursOfWork(plan.price, profile.hourlyRate))} of work`}
+              meta={formatCurrency(plan.price, profile.currency)}
               actions={
                 plan.purchasedAt ? (
                   <span className="text-[11px] text-[#8C7B75]">bought {formatDate(plan.purchasedAt)}</span>
@@ -315,40 +350,3 @@ function PurchasesTab() {
   );
 }
 
-function CalculatorTab() {
-  const snapshot = useFeySnapshot();
-  const profile = snapshot.wealthProfile ?? DEFAULT_WEALTH_PROFILE;
-  const [price, setPrice] = useState("");
-  const [rate, setRate] = useState(String(profile.hourlyRate));
-
-  const hours = hoursOfWork(Number(price) || 0, Number(rate) || 0);
-  const workDays = hours / 8;
-  const monthsOfSaving = profile.monthlySavingsTarget ? (Number(price) || 0) / profile.monthlySavingsTarget : 0;
-
-  return (
-    <Section title="Purchase calculator" subtitle="How many hours of work an item really costs">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label={`Price (${profile.currency})`}>
-          <TextInput type="number" step="0.01" value={price} placeholder="250" onChange={(e) => setPrice(e.target.value)} />
-        </Field>
-        <Field label={`Hourly rate (${profile.currency})`}>
-          <TextInput type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile label="Hours of work" value={formatHours(hours)} tone="burgundy" />
-        <StatTile label="Working days" value={workDays ? workDays.toFixed(1) : "0"} hint="At 8 hours a day" />
-        <StatTile
-          label="Months of saving"
-          value={monthsOfSaving ? monthsOfSaving.toFixed(1) : "0"}
-          hint={`At ${formatCurrency(profile.monthlySavingsTarget, profile.currency)} a month`}
-        />
-      </div>
-
-      <p className="text-xs italic text-[#8C7B75]">
-        Rate changes here are temporary. Update the saved rate under Savings → Settings.
-      </p>
-    </Section>
-  );
-}
