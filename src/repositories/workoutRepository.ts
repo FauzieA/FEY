@@ -1,9 +1,17 @@
 import { db } from '@/db/dexie';
+import { syncService } from '@/services/syncService';
 import type { WorkoutPlan, WorkoutSession, PersonalRecord } from '@/db/dexie';
 
 export class WorkoutRepository {
   static async getPlans(): Promise<WorkoutPlan[]> {
-    return await db.plans.toArray();
+    // First try local Dexie
+    const localPlans = await db.plans.toArray();
+    if (localPlans.length > 0) {
+      return localPlans;
+    }
+    
+    // If no local data, return empty (plans are seeded in seed.ts)
+    return [];
   }
 
   static async getPlanByDay(dayOfWeek: number): Promise<WorkoutPlan | undefined> {
@@ -11,7 +19,13 @@ export class WorkoutRepository {
   }
 
   static async saveSession(session: WorkoutSession): Promise<string> {
-    return await db.sessions.add(session);
+    // Save to local Dexie immediately
+    const id = await db.sessions.add(session);
+    
+    // Queue sync to backend
+    syncService.queueSync('workout', session);
+    
+    return id;
   }
 
   static async getAllSessions(): Promise<WorkoutSession[]> {
@@ -45,6 +59,14 @@ export class WorkoutRepository {
           date: new Date().toISOString(),
         });
       }
+      
+      // Queue sync to backend
+      syncService.queueSync('personal_record', {
+        exerciseId,
+        weight: weightKg,
+        date: new Date().toISOString(),
+      });
+      
       return true; // Indicates a new PR was set!
     }
 

@@ -27,7 +27,7 @@ import { initializeDatabase } from "@/db/seed";
 
 export default function App() {
   useEffect(() => {
-    // Initializes default data and seeds sample content if the database is fresh
+    // Initialize local database with seed data
     void initializeDatabase();
   }, []);
 

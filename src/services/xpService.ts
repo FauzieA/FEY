@@ -1,4 +1,5 @@
 import { db } from "@/db/dexie";
+import { syncService } from "@/services/syncService";
 import { today } from "@/utils/date";
 import type { AttributeId, XpEvent, XpModule } from "@/types/modules";
 
@@ -78,7 +79,12 @@ export async function logActivity(
     createdAt: new Date().toISOString(),
   };
 
+  // Save to local Dexie immediately
   await db.xpEvents.add(event);
+  
+  // Queue sync to backend
+  syncService.queueSync('xp', event);
+  
   return amount;
 }
 

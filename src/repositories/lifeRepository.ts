@@ -1,4 +1,5 @@
 import { db } from "@/db/dexie";
+import { syncService } from "@/services/syncService";
 import { logActivity } from "@/services/xpService";
 import { addDays, today } from "@/utils/date";
 import type { CallReminder, JournalEntry, Person, TimelineEvent } from "@/types/modules";
@@ -7,11 +8,14 @@ export const LifeRepository = {
   async addJournalEntry(entry: Omit<JournalEntry, "id">): Promise<void> {
     await db.journalEntries.add(entry);
     await logActivity("journal_entry", { date: entry.date });
+    syncService.queueSync('journal', entry);
   },
 
   async addPerson(person: Omit<Person, "id">): Promise<number> {
     const id = await db.people.add(person);
     await db.callReminders.add({ personId: id, dueDate: addDays(today(), person.cadenceDays), completedAt: null });
+    syncService.queueSync('person', person);
+    syncService.queueSync('call_reminder', { personId: id, dueDate: addDays(today(), person.cadenceDays), completedAt: null });
     return id;
   },
 
@@ -30,21 +34,30 @@ export const LifeRepository = {
         dueDate: addDays(today(), person.cadenceDays),
         completedAt: null,
       });
+      syncService.queueSync('call_reminder', {
+        personId: person.id!,
+        dueDate: addDays(today(), person.cadenceDays),
+        completedAt: null,
+      });
     }
     await logActivity("person_contacted");
+    syncService.queueSync('call_reminder_complete', { id: reminderId, completedAt: today() });
   },
 
   async addReminder(reminder: Omit<CallReminder, "id">): Promise<void> {
     await db.callReminders.add(reminder);
+    syncService.queueSync('call_reminder', reminder);
   },
 
   async addTimelineEvent(event: Omit<TimelineEvent, "id">): Promise<void> {
     await db.timelineEvents.add(event);
     await logActivity("timeline_event", { date: event.date });
+    syncService.queueSync('timeline', event);
   },
 
   async removePerson(id: number): Promise<void> {
     await db.callReminders.where("personId").equals(id).delete();
     await db.people.delete(id);
+    syncService.queueSync('delete_person', id);
   },
 };

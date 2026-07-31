@@ -326,62 +326,104 @@ function SleepTab() {
 function CycleTab() {
   const snapshot = useFeySnapshot();
   const [form, setForm] = useState({ startDate: today(), symptoms: "", flow: "3" });
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCycle, setEditingCycle] = useState<{ id?: number; startDate: string; endDate?: string } | null>(null);
+  const [editForm, setEditForm] = useState({ startDate: "", endDate: "" });
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [isCalendarEditable, setIsCalendarEditable] = useState(false);
+  const [endDate, setEndDate] = useState(today());
+  
   const cycles = [...snapshot.cycleLogs].sort((a, b) => b.startDate.localeCompare(a.startDate));
   const active = cycles.find((cycle) => !cycle.endDate);
 
+  // Calculate average cycle length
   const gaps = cycles
     .slice(0, 6)
     .map((cycle, index, list) => (index + 1 < list.length ? daysBetween(list[index + 1].startDate, cycle.startDate) : null))
-    .filter((gap): gap is number => gap !== null);
-  const averageCycle = gaps.length ? Math.round(average(gaps)) : 28;
+    .filter((gap): gap is number => gap !== null && gap > 20 && gap < 45);
+  const averageCycle = gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 28;
 
-  // Calculate current phase with detailed insights
-  const getCurrentPhase = () => {
-    if (!active) return { 
-      phase: "No active cycle", 
-      symptoms: "Start tracking to see phase info",
-      biologicalState: "",
-      expectedBehavior: ""
-    };
-    const currentDay = daysBetween(active.startDate) + 1;
-    
-    if (currentDay <= 5) {
-      return { 
-        phase: "Menstrual Phase", 
-        symptoms: "Lower energy, possible cramps, muscle aches, natural instinct toward rest and reflection",
+  // Get cycle insights - always show based on most recent period
+  const mostRecentPeriod = cycles[0];
+  const insights = mostRecentPeriod ? {
+    cycleDay: daysBetween(mostRecentPeriod.startDate) + 1,
+    daysUntilNext: averageCycle - (daysBetween(mostRecentPeriod.startDate) + 1),
+    averageCycleLength: averageCycle,
+    currentPhase: getCurrentPhase(daysBetween(mostRecentPeriod.startDate) + 1, averageCycle),
+    isOvulation: daysBetween(mostRecentPeriod.startDate) + 1 >= 14 && daysBetween(mostRecentPeriod.startDate) + 1 <= 17,
+    isMenstruation: daysBetween(mostRecentPeriod.startDate) + 1 <= 5
+  } : {
+    cycleDay: 0,
+    daysUntilNext: 0,
+    averageCycleLength: averageCycle,
+    currentPhase: null,
+    isOvulation: false,
+    isMenstruation: false
+  };
+
+  function getCurrentPhase(day: number, cycleLength: number) {
+    const normalizedDay = ((day - 1) % cycleLength) + 1;
+    const lutealEnd = cycleLength;
+
+    if (normalizedDay >= 1 && normalizedDay <= 5) {
+      return {
+        name: "Menstrual Phase",
         biologicalState: "Estrogen and progesterone are at their lowest baseline",
-        expectedBehavior: "Lower physical energy, possible cramps, muscle aches, and a natural instinct toward rest and reflection"
+        expectedBehavior: "Lower physical energy, possible cramps, muscle aches, and a natural instinct toward rest and reflection",
+        symptoms: ["fatigue", "cramps", "muscle aches", "lower energy", "need for rest"]
       };
-    } else if (currentDay <= 13) {
-      return { 
-        phase: "Follicular Phase", 
-        symptoms: "Rising energy, good time for new projects, social activities",
+    } else if (normalizedDay >= 6 && normalizedDay <= 13) {
+      return {
+        name: "Follicular Phase",
         biologicalState: "Estrogen steadily rises, improving mood, focus, and brain plasticity",
-        expectedBehavior: "Rising vitality, clearer mental focus, and expanding mental endurance"
+        expectedBehavior: "Rising vitality, clearer mental focus, and expanding mental endurance",
+        symptoms: ["rising energy", "better mood", "improved focus", "mental clarity"]
       };
-    } else if (currentDay <= 17) {
-      return { 
-        phase: "Ovulation Phase", 
-        symptoms: "Peak energy, confidence high, great for important tasks",
+    } else if (normalizedDay >= 14 && normalizedDay <= 17) {
+      return {
+        name: "Ovulation Phase",
         biologicalState: "Estrogen peaks alongside a brief surge in testosterone and luteinizing hormone",
-        expectedBehavior: "Peak physical strength, high sociability, vibrant energy, and maximum stamina"
+        expectedBehavior: "Peak physical strength, high sociability, vibrant energy, and maximum stamina",
+        symptoms: ["peak energy", "high confidence", "sociability", "vibrant energy"]
       };
-    } else {
-      return { 
-        phase: "Luteal Phase", 
-        symptoms: "Energy declining, focus on completing tasks, self-reflection",
+    } else if (normalizedDay >= 18 && normalizedDay <= lutealEnd) {
+      return {
+        name: "Luteal Phase",
         biologicalState: "Progesterone rises and then plummets sharply right before the cycle ends",
-        expectedBehavior: "Gradual decline in energy, potential brain fog, cravings, mood sensitivity, and pre-period headaches or fatigue"
+        expectedBehavior: "Gradual decline in energy, potential brain fog, cravings, mood sensitivity, and pre-period headaches or fatigue",
+        symptoms: ["declining energy", "brain fog", "cravings", "mood sensitivity", "headaches", "fatigue"]
       };
+    }
+    return null;
+  }
+
+  const handleDeleteCycle = async (id: number) => {
+    if (confirm("Are you sure you want to delete this period entry?")) {
+      await HealthRepository.removeCycle(id);
     }
   };
 
-  const currentPhase = getCurrentPhase();
-  const daysUntilNext = active ? averageCycle - (daysBetween(active.startDate) + 1) : 0;
+  const handleEndCycle = async (id: number, endDate: string) => {
+    await HealthRepository.endCycle(id, endDate);
+    setShowEndDatePicker(false);
+  };
 
-  // Generate calendar days
+const handleEditCycle = (cycle: { id?: number; startDate: string; endDate?: string | null }) => {
+    if (cycle.id === undefined) return;
+    setEditingCycle({ id: cycle.id, startDate: cycle.startDate, endDate: cycle.endDate ?? undefined });
+    setEditForm({ startDate: cycle.startDate, endDate: cycle.endDate || "" });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingCycle && editingCycle.id !== undefined) {
+      await HealthRepository.updateCycle(editingCycle.id, editForm.startDate, editForm.endDate || undefined);
+      setShowEditModal(false);
+      setEditingCycle(null);
+    }
+  };
+
+  // Generate compact calendar days
   const generateCalendarDays = () => {
     const year = selectedMonth.getFullYear();
     const month = selectedMonth.getMonth();
@@ -402,8 +444,8 @@ function CycleTab() {
       const date = new Date(year, month, day);
       const dateStr = date.toISOString().split('T')[0];
       
-      // Check if this date falls within any cycle
-      const cycleForDay = cycles.find(cycle => {
+      // Check if this date falls within any period
+      const periodForDay = cycles.find(cycle => {
         const start = new Date(cycle.startDate);
         const end = cycle.endDate ? new Date(cycle.endDate) : new Date();
         return date >= start && date <= end;
@@ -412,8 +454,8 @@ function CycleTab() {
       days.push({
         date: dateStr,
         day,
-        inCycle: !!cycleForDay,
-        cycle: cycleForDay,
+        inCycle: !!periodForDay,
+        isToday: dateStr === today(),
       });
     }
     
@@ -422,68 +464,60 @@ function CycleTab() {
 
   const calendarDays = generateCalendarDays();
 
-  const handleCalendarClick = async (day: any) => {
-    if (!day) return;
-    
-    if (isCalendarEditable) {
-      // If calendar is editable, clicking a date sets it as cycle start
-      await HealthRepository.startCycle({
-        startDate: day.date,
-        endDate: null,
-        symptoms: form.symptoms || undefined,
-        flow: Number(form.flow),
-      });
-      setIsCalendarEditable(false);
-    } else {
-      // Otherwise just update the form
-      setForm({ ...form, startDate: day.date });
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Current Phase Info */}
-      {active && (
-        <div className="bg-[#F2E8EA] border border-[#D9B7BE]/30 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
+      {/* Current Phase Card - Always show if there's any period history */}
+      {mostRecentPeriod && insights.currentPhase && (
+        <div className="bg-gradient-to-br from-[#6B2D3A] to-[#8B3D4A] rounded-2xl p-5 text-white">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Current Phase</p>
-              <p className="font-serif text-lg text-[#6B2D3A]">{currentPhase.phase}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA]">Current Phase</p>
+              <p className="font-serif text-xl">{insights.currentPhase.name}</p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Cycle Day</p>
-              <p className="font-mono text-lg text-[#1A1817]">{daysBetween(active.startDate) + 1}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA]">Cycle Day</p>
+              <p className="font-mono text-2xl">{insights.cycleDay}</p>
             </div>
           </div>
-          <div className="space-y-2">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Biological State</p>
-              <p className="text-xs text-[#6B2D3A]">{currentPhase.biologicalState}</p>
+          
+          <div className="space-y-3 mb-4">
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA] mb-1">Biological State</p>
+              <p className="text-sm leading-relaxed">{insights.currentPhase.biologicalState}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">What to Expect</p>
-              <p className="text-xs text-[#6B2D3A]">{currentPhase.expectedBehavior}</p>
+            <div className="bg-white/10 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA] mb-1">What to Expect</p>
+              <p className="text-sm leading-relaxed">{insights.currentPhase.expectedBehavior}</p>
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {insights.currentPhase.symptoms.map((symptom) => (
+              <span key={symptom} className="px-3 py-1 bg-white/20 rounded-full text-xs">
+                {symptom}
+              </span>
+            ))}
           </div>
         </div>
       )}
 
+      {/* Stats Row */}
       <div className="grid grid-cols-2 gap-3">
-        <StatTile label="Average cycle" value={`${averageCycle} days`} hint={gaps.length ? `from ${gaps.length} cycles` : "assumed until tracked"} />
+        <StatTile label="Average cycle" value={`${insights.averageCycleLength} days`} hint={gaps.length ? `from ${gaps.length} periods` : "assumed until tracked"} />
         <StatTile
           label="Next expected"
-          value={active && daysUntilNext > 0 ? `${daysUntilNext} days` : "—"}
-          hint={active ? formatDate(addDays(active.startDate, averageCycle)) : undefined}
+          value={mostRecentPeriod && insights.daysUntilNext > 0 ? `${insights.daysUntilNext} days` : "—"}
+          hint={mostRecentPeriod ? formatDate(addDays(mostRecentPeriod.startDate, insights.averageCycleLength)) : undefined}
         />
       </div>
 
-      {/* Calendar View */}
-      <Section title="Cycle Calendar">
+      {/* Compact Calendar View */}
+      <Section title="Period Calendar">
         <div className="flex items-center justify-between mb-2">
           <button
             type="button"
             onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1))}
-            className="px-1.5 py-0.5 rounded border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer text-xs"
+            className="px-2 py-1 rounded border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer text-xs"
           >
             ←
           </button>
@@ -493,81 +527,165 @@ function CycleTab() {
           <button
             type="button"
             onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1))}
-            className="px-1.5 py-0.5 rounded border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer text-xs"
+            className="px-2 py-1 rounded border border-[#EAE3DE] bg-[#FFFCFA] text-[#8C7B75] hover:border-[#D9B7BE] cursor-pointer text-xs"
           >
             →
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-0.5 mb-0.5">
+        <div className="grid grid-cols-7 gap-1 mb-1">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-            <p key={day} className="text-center text-[8px] font-medium text-[#8C7B75]">{day}</p>
+            <p key={day} className="text-center text-[9px] font-medium text-[#8C7B75]">{day}</p>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-0.5 max-w-xs mx-auto">
+        <div className="grid grid-cols-7 gap-1">
           {calendarDays.map((day, index) => (
             <div
               key={index}
-              className={`aspect-square rounded flex items-center justify-center text-[10px] cursor-pointer transition-colors ${
+              className={`aspect-square rounded flex items-center justify-center text-[11px] cursor-pointer transition-colors ${
                 day
                   ? day.inCycle
                     ? 'bg-[#6B2D3A] text-white'
-                    : isCalendarEditable
-                    ? 'bg-[#F2E8EA] border border-[#D9B7BE] text-[#1A1817] hover:bg-[#6B2D3A] hover:text-white'
+                    : day.isToday
+                    ? 'bg-[#D9B7BE] text-white font-bold'
                     : 'bg-[#FFFCFA] border border-[#EAE3DE] text-[#1A1817] hover:border-[#D9B7BE]'
                   : 'bg-transparent'
               }`}
-              onClick={() => handleCalendarClick(day)}
+              onClick={() => day && setForm({ ...form, startDate: day.date })}
             >
               {day?.day || ''}
             </div>
           ))}
         </div>
-
-        <div className="mt-2 flex items-center justify-between">
-          <p className="text-[9px] text-[#8C7B75]">
-            {isCalendarEditable ? "Click a date to log cycle start" : "Click 'Log Cycle' to enable calendar editing"}
-          </p>
-          <Button 
-            size="sm" 
-            variant={isCalendarEditable ? "rose" : "ghost"}
-            onClick={() => setIsCalendarEditable(!isCalendarEditable)}
-          >
-            {isCalendarEditable ? "Cancel" : "Log Cycle"}
-          </Button>
-        </div>
       </Section>
 
-      <Section title="Cycle History">
+      {/* Quick Log Section */}
+      <Section title="Log Period">
+        <InlineForm
+          title="Start new period"
+          onSubmit={async () => {
+            await HealthRepository.startCycle({
+              startDate: form.startDate,
+              endDate: null,
+              symptoms: form.symptoms || undefined,
+              flow: Number(form.flow),
+            });
+            setForm({ startDate: today(), symptoms: "", flow: "3" });
+          }}
+        >
+          <Field label="Start date">
+            <TextInput type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+          </Field>
+          <Field label="Flow intensity" hint="1 light · 5 heavy">
+            <Select value={form.flow} onChange={(e) => setForm({ ...form, flow: e.target.value })}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Symptoms" className="sm:col-span-2">
+            <TextInput value={form.symptoms} onChange={(e) => setForm({ ...form, symptoms: e.target.value })} placeholder="Cramps, fatigue, etc." />
+          </Field>
+        </InlineForm>
+      </Section>
+
+      {/* Period History */}
+      <Section title="Period History">
         {active && (
           <div className="flex items-center justify-between rounded-2xl border border-[#D9B7BE]/50 bg-[#F2E8EA] p-4 mb-4">
             <div>
-              <p className="font-serif text-sm text-[#6B2D3A]">Cycle in progress</p>
-              <p className="text-xs text-[#8C7B75]">Started {formatDate(active.startDate)}</p>
+              <p className="font-serif text-sm text-[#6B2D3A]">Period in progress</p>
+              <p className="text-xs text-[#8C7B75]">Started {formatDate(active.startDate)} · Day {insights.cycleDay}</p>
             </div>
-            <Button size="sm" onClick={() => void HealthRepository.endCycle(active.id!)}>
-              Mark ended
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setShowEndDatePicker(true)}>
+                End period
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => active.id !== undefined && handleEditCycle(active)}>
+                Edit
+              </Button>
+              <Button size="sm" variant="rose" onClick={() => active.id !== undefined && void handleDeleteCycle(active.id)}>
+                Delete
+              </Button>
+            </div>
           </div>
         )}
 
         <div className="space-y-2">
-          {cycles.length === 0 && <EmptyState title="No cycles tracked yet" />}
-          {cycles.map((cycle) => (
-            <ListRow
-              key={cycle.id}
-              title={formatDate(cycle.startDate)}
-              subtitle={cycle.symptoms}
-              meta={cycle.endDate ? `${daysBetween(cycle.startDate, cycle.endDate) + 1} days` : "ongoing"}
-            />
-          ))}
+          {cycles.length === 0 && <EmptyState title="No periods tracked yet" hint="Log your first period to start tracking" />}
+          {cycles.map((cycle) => {
+            if (cycle.id === undefined) return null;
+            return (
+              <div key={cycle.id} className="flex items-center justify-between rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] p-3">
+                <div>
+                  <p className="font-serif text-sm text-[#1A1817]">{formatDate(cycle.startDate)}</p>
+                  <p className="text-xs text-[#8C7B75]">
+                    {cycle.endDate ? `${daysBetween(cycle.startDate, cycle.endDate) + 1} days` : "ongoing"}
+                    {cycle.symptoms && ` · ${cycle.symptoms}`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => handleEditCycle(cycle)}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => cycle.id !== undefined && void handleDeleteCycle(cycle.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Section>
+
+      {/* End Date Picker Modal */}
+      {showEndDatePicker && active && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
+            <h3 className="font-serif text-lg text-[#1A1817] mb-4">End Period</h3>
+            <Field label="End date">
+              <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </Field>
+            <div className="flex gap-2 mt-4">
+              <Button size="sm" variant="ghost" onClick={() => setShowEndDatePicker(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={() => active.id !== undefined && handleEndCycle(active.id, endDate)}>
+                End Period
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Period Modal */}
+      {showEditModal && editingCycle && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
+            <h3 className="font-serif text-lg text-[#1A1817] mb-4">Edit Period</h3>
+            <Field label="Start date">
+              <TextInput type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} />
+            </Field>
+            <Field label="End date (optional)">
+              <TextInput type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} />
+            </Field>
+            <div className="flex gap-2 mt-4">
+              <Button size="sm" variant="ghost" onClick={() => { setShowEditModal(false); setEditingCycle(null); }}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 function NotesTab() {
   const snapshot = useFeySnapshot();
   const [form, setForm] = useState({ date: today(), category: "general" as HealthNote["category"], title: "", details: "" });

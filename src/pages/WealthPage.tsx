@@ -169,27 +169,23 @@ function SettingsForm() {
   const profile = snapshot.wealthProfile ?? DEFAULT_WEALTH_PROFILE;
   const [form, setForm] = useState({
     currency: profile.currency,
-    hourlyRate: String(profile.hourlyRate),
     monthlySavingsTarget: String(profile.monthlySavingsTarget),
   });
 
   return (
     <InlineForm
-      title="Currency, hourly rate and monthly target"
+      title="Currency and monthly target"
       submitLabel="Update"
       onSubmit={async () => {
         await WealthRepository.saveProfile({
           currency: form.currency || "GBP",
-          hourlyRate: Number(form.hourlyRate) || 0,
+          hourlyRate: profile.hourlyRate,
           monthlySavingsTarget: Number(form.monthlySavingsTarget) || 0,
         });
       }}
     >
       <Field label="Currency" hint="ISO code, e.g. GBP, USD, EUR">
         <TextInput value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} />
-      </Field>
-      <Field label="Hourly rate">
-        <TextInput type="number" step="0.01" value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })} />
       </Field>
       <Field label="Monthly savings target">
         <TextInput

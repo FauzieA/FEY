@@ -9,7 +9,7 @@ import { Button } from "@/components/common/Button";
 import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { buildCharacter } from "@/services/characterService";
 import { computeMetrics, dailyChecklist, dailyCompletion, moduleSummaries, upcomingReminders, weeklyCompletion } from "@/services/insightsService";
-import { formatDate, relativeDay, startOfWeek, today, weekdayLabel } from "@/utils/date";
+import { formatDate, relativeDay, startOfWeek, today, weekdayLabel, daysBetween } from "@/utils/date";
 import { formatNumber } from "@/utils/format";
 
 const QUICK_ACTIONS = [
@@ -32,6 +32,39 @@ export default function HomeDashboardPage() {
   const weekly = weeklyCompletion(snapshot);
   const reminders = upcomingReminders(snapshot);
   const summaries = moduleSummaries(snapshot);
+
+  // Calculate cycle phase for dashboard
+  const cycles = [...snapshot.cycleLogs].sort((a, b) => b.startDate.localeCompare(a.startDate));
+  const activeCycle = cycles.find((cycle) => !cycle.endDate);
+  
+  const gaps = cycles
+    .slice(0, 6)
+    .map((cycle, index, list) => (index + 1 < list.length ? daysBetween(list[index + 1].startDate, cycle.startDate) : null))
+    .filter((gap): gap is number => gap !== null && gap > 20 && gap < 45);
+  const averageCycle = gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 28;
+
+  const getCurrentPhase = (day: number, cycleLength: number) => {
+    const normalizedDay = ((day - 1) % cycleLength) + 1;
+    const lutealEnd = cycleLength;
+
+    if (normalizedDay >= 1 && normalizedDay <= 5) {
+      return { name: "Menstrual", color: "#6B2D3A" };
+    } else if (normalizedDay >= 6 && normalizedDay <= 13) {
+      return { name: "Follicular", color: "#8C7B75" };
+    } else if (normalizedDay >= 14 && normalizedDay <= 17) {
+      return { name: "Ovulation", color: "#C4B7B1" };
+    } else if (normalizedDay >= 18 && normalizedDay <= lutealEnd) {
+      return { name: "Luteal", color: "#D9B7BE" };
+    }
+    return null;
+  };
+
+  const cycleInfo = activeCycle ? {
+    cycleDay: daysBetween(activeCycle.startDate) + 1,
+    daysUntilNext: averageCycle - (daysBetween(activeCycle.startDate) + 1),
+    phase: getCurrentPhase(daysBetween(activeCycle.startDate) + 1, averageCycle),
+    averageCycleLength: averageCycle
+  } : null;
 
   return (
     <div className="space-y-6">
@@ -72,6 +105,36 @@ export default function HomeDashboardPage() {
             <StatTile label="Streak" value={`${character.streak}d`} hint={`best ${character.longestStreak}d`} />
             <StatTile label="Modules active" value={`${metrics.modulesTouched} / 7`} />
           </div>
+        </div>
+
+        {/* Cycle Phase Card */}
+        <div className="space-y-4 rounded-3xl border border-[#EAE3DE] bg-[#FFFCFA] p-5">
+          {cycleInfo && cycleInfo.phase ? (
+            <>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#8C7B75]">Cycle Phase</p>
+                <p className="font-serif text-2xl text-[#1A1817]">{cycleInfo.phase.name}</p>
+                <p className="text-xs text-[#8C7B75]">Day {cycleInfo.cycleDay} of {cycleInfo.averageCycleLength}</p>
+              </div>
+              <div className="h-2 bg-[#EAE3DE] rounded-full overflow-hidden">
+                <div 
+                  className="h-full transition-all duration-300" 
+                  style={{ width: `${(cycleInfo.cycleDay / cycleInfo.averageCycleLength) * 100}%`, backgroundColor: cycleInfo.phase.color }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <StatTile label="Days until next" value={cycleInfo.daysUntilNext > 0 ? `${cycleInfo.daysUntilNext}d` : "Soon"} />
+                <StatTile label="Average cycle" value={`${cycleInfo.averageCycleLength}d`} />
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-xs text-[#8C7B75]">No active cycle</p>
+              <Button size="sm" variant="ghost" onClick={() => navigate("/health")} className="mt-2">
+                Log cycle
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4 rounded-3xl border border-[#EAE3DE] bg-[#FFFCFA] p-5">
