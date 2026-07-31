@@ -49,4 +49,14 @@ export const HealthRepository = {
     await db.cycleLogs.delete(id);
     syncService.queueSync('delete_cycle', id);
   },
+
+  async updateCycle(id: number, startDate: string, endDate?: string): Promise<void> {
+    if (endDate) {
+      await db.cycleLogs.update(id, { startDate, endDate });
+      syncService.queueSync('cycle', { id, startDate, endDate });
+    } else {
+      await db.cycleLogs.update(id, { startDate });
+      syncService.queueSync('cycle', { id, startDate });
+    }
+  },
 };
