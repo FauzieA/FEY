@@ -44,4 +44,9 @@ export const HealthRepository = {
     await db[table].delete(id);
     syncService.queueSync('delete', { table, id });
   },
+
+  async removeCycle(id: number): Promise<void> {
+    await db.cycleLogs.delete(id);
+    syncService.queueSync('delete_cycle', id);
+  },
 };

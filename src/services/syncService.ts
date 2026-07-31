@@ -225,6 +225,9 @@ class SyncService {
       case 'missed_fast':
         await this.syncMissedFastItem(action, data);
         break;
+      case 'delete_cycle':
+        await this.syncDeleteCycleItem(action, data);
+        break;
       default:
         console.warn(`Unknown sync type: ${type}`);
     }
