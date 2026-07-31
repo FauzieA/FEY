@@ -1,4 +1,5 @@
 import { db } from "@/db/dexie";
+import { syncService } from "@/services/syncService";
 import { logActivity } from "@/services/xpService";
 import { today } from "@/utils/date";
 import type { PurchasePlan, SavingsEntry, SavingsGoal, WealthProfile } from "@/types/modules";
@@ -18,17 +19,20 @@ export const WealthRepository = {
   async saveProfile(patch: Partial<WealthProfile>): Promise<void> {
     const current = await WealthRepository.getProfile();
     await db.wealthProfile.put({ ...current, ...patch, id: "wealth" });
+    syncService.queueSync('wealth_profile', { ...DEFAULT_WEALTH_PROFILE, ...patch });
   },
 
   async addSavings(entry: Omit<SavingsEntry, "id">): Promise<void> {
     await db.savingsEntries.add(entry);
     await logActivity("savings_deposit", { date: entry.date });
+    syncService.queueSync('savings', entry);
     if (entry.goalId) await WealthRepository.settleGoal(entry.goalId);
   },
 
   async addGoal(goal: Omit<SavingsGoal, "id" | "createdAt">): Promise<void> {
     await db.savingsGoals.add({ ...goal, createdAt: today() });
     await logActivity("goal_created");
+    syncService.queueSync('savings_goal', { ...goal, createdAt: today() });
   },
 
   /** Marks a goal complete once its deposits cover the target. */
@@ -40,20 +44,24 @@ export const WealthRepository = {
     if (saved >= goal.targetAmount) {
       await db.savingsGoals.update(goalId, { completedAt: today() });
       await logActivity("goal_completed");
+      syncService.queueSync('savings_goal', { id: goalId, completedAt: today() });
     }
   },
 
   async addPurchasePlan(plan: Omit<PurchasePlan, "id" | "createdAt">): Promise<void> {
     await db.purchasePlans.add({ ...plan, createdAt: today() });
     await logActivity("purchase_planned");
+    syncService.queueSync('purchase_plan', { ...plan, createdAt: today() });
   },
 
   async markPurchased(id: number): Promise<void> {
     await db.purchasePlans.update(id, { purchasedAt: today() });
+    syncService.queueSync('purchase_plan', { id, purchasedAt: today() });
   },
 
   async removePurchasePlan(id: number): Promise<void> {
     await db.purchasePlans.delete(id);
+    syncService.queueSync('delete_purchase_plan', id);
   },
 };
 

@@ -1,4 +1,5 @@
 import { db } from "@/db/dexie";
+import { syncService } from "@/services/syncService";
 import type { WorkoutSession } from "@/db/dexie";
 import { WorkoutRepository } from "@/repositories/workoutRepository";
 import { logActivity } from "@/services/xpService";
@@ -20,7 +21,8 @@ export const TrainingRepository = {
    * any exercise where the top set beat the previous personal record.
    */
   async saveSession(session: WorkoutSession): Promise<void> {
-    await db.sessions.put(session);
+    // Save to local Dexie immediately
+    await db.sessions.add(session);
 
     const date = toISODate(session.completedAt ?? new Date());
     const completedSets = session.exercises.reduce(
@@ -41,6 +43,9 @@ export const TrainingRepository = {
       );
       if (isRecord) await logActivity("personal_record", { date });
     }
+
+    // Queue sync to backend
+    syncService.queueSync('workout', session);
   },
 
   /** Every logged set across all sessions, newest first. */
