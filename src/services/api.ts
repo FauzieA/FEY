@@ -51,9 +51,9 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
 
   if (accessToken) {
@@ -80,11 +80,12 @@ function toCamelCase<T>(obj: any): T {
   if (Array.isArray(obj)) return obj.map(toCamelCase) as T;
   if (typeof obj !== 'object') return obj;
 
-  return Object.keys(obj).reduce((acc, key) => {
+  const result: Record<string, any> = {};
+  Object.keys(obj).forEach((key: string) => {
     const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-    acc[camelKey] = toCamelCase(obj[key]);
-    return acc;
-  }, {} as T);
+    result[camelKey] = toCamelCase(obj[key]);
+  });
+  return result as T;
 }
 
 // Convert camelCase to snake_case
@@ -93,11 +94,12 @@ function toSnakeCase(obj: any): any {
   if (Array.isArray(obj)) return obj.map(toSnakeCase);
   if (typeof obj !== 'object') return obj;
 
-  return Object.keys(obj).reduce((acc, key) => {
+  const result: Record<string, any> = {};
+  Object.keys(obj).forEach((key: string) => {
     const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-    acc[snakeKey] = toSnakeCase(obj[key]);
-    return acc;
-  }, {});
+    result[snakeKey] = toSnakeCase(obj[key]);
+  });
+  return result;
 }
 
 // Generic API methods
