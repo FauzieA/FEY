@@ -450,6 +450,12 @@ class SyncService {
     }
   }
 
+  private async syncDeleteCycleItem(action: string, data: any) {
+    if (action === 'delete') {
+      await api.delete(`/cycle-logs/${data}/`);
+    }
+  }
+
   async syncProfile() {
     if (!this.isOnline) return;
     
