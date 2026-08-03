@@ -97,6 +97,8 @@ export interface AdhkarLog {
   evening: boolean;
   afterPrayer: boolean;
   istighfarCount: number;
+  /** Array of completed item keys in format "category_id" */
+  completedItems?: string[];
 }
 
 export interface MissedFast {

@@ -142,13 +142,11 @@ export default function PerfumeryPage() {
                           <th className="py-1 text-left font-bold">Ingredient</th>
                           <th className="py-1 text-left font-bold">Note</th>
                           <th className="py-1 text-right font-bold">Amount</th>
-                          <th className="py-1 text-right font-bold">Share</th>
                           <th className="py-1 text-right font-bold">Contribution</th>
                         </tr>
                       </thead>
                       <tbody>
                         {version.ingredients.map((ingredient, index) => {
-                          const share = percent(ingredient.amount, total);
                           // Calculate contribution to final strength (accounting for dilution)
                           const dilution = ingredient.dilution || 100;
                           const contribution = percent(ingredient.amount * (dilution / 100), total);
@@ -159,7 +157,6 @@ export default function PerfumeryPage() {
                               <td className="py-1.5 text-right font-mono text-[#6B2D3A]">
                                 {ingredient.amount} {version.unit}
                               </td>
-                              <td className="py-1.5 text-right font-mono text-[#8C7B75]">{share}%</td>
                               <td className="py-1.5 text-right font-mono text-[#6B2D3A]">{contribution}%</td>
                             </tr>
                           );

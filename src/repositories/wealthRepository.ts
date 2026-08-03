@@ -43,7 +43,7 @@ export const WealthRepository = {
     const saved = deposits.reduce((sum, entry) => sum + entry.amount, 0);
     if (saved >= goal.targetAmount) {
       await db.savingsGoals.update(goalId, { completedAt: today() });
-      await logActivity("goal_completed");
+      await logActivity("goal_completed", { difficulty: "medium" as const });
       syncService.queueSync('savings_goal', { id: goalId, completedAt: today() });
     }
   },

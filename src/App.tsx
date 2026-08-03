@@ -10,8 +10,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import PerfumeryPage from "@/pages/PerfumeryPage";
 import WealthPage from "@/pages/WealthPage";
 import LifePage from "@/pages/LifePage";
-import CharacterHubPage from "@/pages/CharacterHubPage";
-import ProgressPage from "@/pages/ProgressPage";
+import CharacterProgressionPage from "@/pages/CharacterProgressionPage";
 
 /* Original workout tracker screens, preserved in full */
 import WorkoutDashboardPage from "@/pages/DashboardPage";
@@ -46,8 +45,7 @@ export default function App() {
           <Route path="perfumery" element={<PerfumeryPage />} />
           <Route path="wealth" element={<WealthPage />} />
           <Route path="life" element={<LifePage />} />
-          <Route path="character" element={<CharacterHubPage />} />
-          <Route path="progress" element={<ProgressPage />} />
+          <Route path="character" element={<CharacterProgressionPage />} />
 
           {/* Original workout tracker routes */}
           <Route path="workout/session" element={<WorkoutPage />} />

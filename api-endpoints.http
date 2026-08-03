@@ -1,0 +1,657 @@
+### FEY API Endpoints
+### Base URL: https://fey-backend-g4dz.onrender.com/api
+### Organized by Page/Module
+
+###############################################################################
+# AUTHENTICATION
+###############################################################################
+
+### Login
+POST {{API_BASE_URL}}/token/
+Content-Type: application/json
+
+{
+  "username": "string",
+  "password": "string"
+}
+
+### Refresh Token
+POST {{API_BASE_URL}}/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "string"
+}
+
+###############################################################################
+# CHARACTER / PROFILE (HomeDashboardPage, CharacterPage)
+###############################################################################
+
+### Get Profile
+GET {{API_BASE_URL}}/profile/
+Authorization: Bearer {{access_token}}
+
+### Create Profile
+POST {{API_BASE_URL}}/profile/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "id": "string",
+  "level": 1,
+  "current_xp": 0,
+  "next_level_xp": 1000,
+  "current_streak": 0,
+  "last_workout_date": null,
+  "attributes": {
+    "STR": 10,
+    "END": 10,
+    "VOL": 10,
+    "CON": 10
+  }
+}
+
+### Update Profile
+PUT {{API_BASE_URL}}/profile/{{profile_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "level": 1,
+  "current_xp": 0,
+  "next_level_xp": 1000,
+  "current_streak": 0,
+  "last_workout_date": null,
+  "attributes": {
+    "STR": 10,
+    "END": 10,
+    "VOL": 10,
+    "CON": 10
+  }
+}
+
+###############################################################################
+# SETTINGS (App-wide)
+###############################################################################
+
+### Get Settings
+GET {{API_BASE_URL}}/settings/
+Authorization: Bearer {{access_token}}
+
+### Create Settings
+POST {{API_BASE_URL}}/settings/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "id": "string",
+  "default_rest_seconds": 90,
+  "sound_enabled": true,
+  "vibration_enabled": true
+}
+
+### Update Settings
+PUT {{API_BASE_URL}}/settings/{{settings_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "default_rest_seconds": 90,
+  "sound_enabled": true,
+  "vibration_enabled": true
+}
+
+###############################################################################
+# FAITH / ISLAM (FaithPage)
+###############################################################################
+
+### Get Prayer Logs
+GET {{API_BASE_URL}}/salah/
+Authorization: Bearer {{access_token}}
+
+### Create Prayer Log
+POST {{API_BASE_URL}}/salah/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "fajr": "on_time|pending|missed",
+  "dhuhr": "on_time|pending|missed",
+  "asr": "on_time|pending|missed",
+  "maghrib": "on_time|pending|missed",
+  "isha": "on_time|pending|missed"
+}
+
+### Update Prayer Log
+PATCH {{API_BASE_URL}}/salah/{{prayer_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "fajr": "on_time|pending|missed",
+  "dhuhr": "on_time|pending|missed",
+  "asr": "on_time|pending|missed",
+  "maghrib": "on_time|pending|missed",
+  "isha": "on_time|pending|missed"
+}
+
+### Create Quran Reading Log
+POST {{API_BASE_URL}}/quran-reading/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "surah": "string",
+  "from_ayah": 1,
+  "to_ayah": 10,
+  "pages": 5,
+  "minutes": 30,
+  "reflection": "string"
+}
+
+### Create Memorization Entry
+POST {{API_BASE_URL}}/memorization-entries/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "surah": "string",
+  "from_ayah": 1,
+  "to_ayah": 10,
+  "status": "learning|memorized|needs-work",
+  "started_at": "YYYY-MM-DD",
+  "last_reviewed_at": "YYYY-MM-DD"
+}
+
+### Update Memorization Entry
+PATCH {{API_BASE_URL}}/memorization-entries/{{memorization_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "learning|memorized|needs-work",
+  "last_reviewed_at": "YYYY-MM-DD"
+}
+
+### Create Revision Log
+POST {{API_BASE_URL}}/revisions/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "surah": "string",
+  "quality": 5,
+  "notes": "string"
+}
+
+### Get Adhkar Logs
+GET {{API_BASE_URL}}/adhkar/
+Authorization: Bearer {{access_token}}
+
+### Create Adhkar Log
+POST {{API_BASE_URL}}/adhkar/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "morning": false,
+  "evening": false,
+  "after_prayer": false,
+  "istighfar_count": 0,
+  "completed_items": ["morning_item1", "evening_item2"]
+}
+
+### Update Adhkar Log
+PATCH {{API_BASE_URL}}/adhkar/{{adhkar_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "morning": false,
+  "evening": false,
+  "after_prayer": false,
+  "istighfar_count": 0,
+  "completed_items": ["morning_item1", "evening_item2"]
+}
+
+### Create Missed Fast
+POST {{API_BASE_URL}}/missed-fasts/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "missed_on": "YYYY-MM-DD",
+  "reason": "string",
+  "made_up_on": null
+}
+
+### Update Missed Fast
+PATCH {{API_BASE_URL}}/missed-fasts/{{fast_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "missed_on": "YYYY-MM-DD",
+  "reason": "string",
+  "made_up_on": "YYYY-MM-DD"
+}
+
+###############################################################################
+# TRAINING (WorkoutHubPage, TrainingPage, DashboardPage)
+###############################################################################
+
+### Get Workout Sessions
+GET {{API_BASE_URL}}/workouts/
+Authorization: Bearer {{access_token}}
+
+### Create Workout Session
+POST {{API_BASE_URL}}/workouts/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "category": "string",
+  "duration_minutes": 60,
+  "exercises": [
+    {
+      "exercise_id": "string",
+      "exercise_name": "string",
+      "sets": [
+        {
+          "reps": 10,
+          "weight_kg": 20
+        }
+      ]
+    }
+  ]
+}
+
+### Create Personal Record
+POST {{API_BASE_URL}}/personal-records/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "exercise_id": "string",
+  "weight_kg": 100,
+  "reps": 5,
+  "date": "YYYY-MM-DD"
+}
+
+###############################################################################
+# XP EVENTS (System-wide)
+###############################################################################
+
+### Get XP Events
+GET {{API_BASE_URL}}/xp-events/
+Authorization: Bearer {{access_token}}
+
+### Create XP Event
+POST {{API_BASE_URL}}/xp-events/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "module": "training|faith|health|library|perfumery|wealth|life",
+  "activity": "string",
+  "amount": 50,
+  "attribute": "discipline|devotion|strength|vitality|knowledge|craft|stewardship|connection",
+  "date": "YYYY-MM-DD",
+  "created_at": "YYYY-MM-DDTHH:mm:ss"
+}
+
+###############################################################################
+# HEALTH (HealthPage)
+###############################################################################
+
+### Create Weight Log
+POST {{API_BASE_URL}}/weight-logs/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "weight_kg": 70.5,
+  "notes": "string"
+}
+
+### Create Measurement Log
+POST {{API_BASE_URL}}/measurements/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "waist_cm": 80,
+  "hips_cm": 100,
+  "chest_cm": 95,
+  "thigh_cm": 60,
+  "arm_cm": 30,
+  "notes": "string"
+}
+
+### Create Sleep Log
+POST {{API_BASE_URL}}/sleep-logs/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "start_time": "22:00",
+  "end_time": "07:00",
+  "hours": 9,
+  "quality": 5,
+  "notes": "string"
+}
+
+### Get Cycle Logs
+GET {{API_BASE_URL}}/cycle-logs/
+Authorization: Bearer {{access_token}}
+
+### Create Cycle Log
+POST {{API_BASE_URL}}/cycle-logs/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "start_date": "YYYY-MM-DD",
+  "end_date": null,
+  "symptoms": "string",
+  "flow": 3
+}
+
+### Update Cycle Log
+PATCH {{API_BASE_URL}}/cycle-logs/{{cycle_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "end_date": "YYYY-MM-DD"
+}
+
+### Delete Cycle Log
+DELETE {{API_BASE_URL}}/cycle-logs/{{cycle_id}}/
+Authorization: Bearer {{access_token}}
+
+### Create Health Note
+POST {{API_BASE_URL}}/health-notes/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "category": "symptom|appointment|medication|general",
+  "title": "string",
+  "details": "string"
+}
+
+###############################################################################
+# LIBRARY (LibraryPage)
+###############################################################################
+
+### Create Book
+POST {{API_BASE_URL}}/books/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "title": "string",
+  "author": "string",
+  "total_pages": 300,
+  "current_page": 1,
+  "status": "reading|finished|waiting",
+  "started_at": "YYYY-MM-DD",
+  "finished_at": null,
+  "rating": 5,
+  "notes": "string",
+  "series_name": "string",
+  "sequel_to": "string",
+  "expected_release_date": "YYYY-MM-DD",
+  "quotes": ["string"],
+  "footnotes": ["string"]
+}
+
+### Update Book
+PATCH {{API_BASE_URL}}/books/{{book_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "current_page": 50,
+  "status": "reading|finished|waiting",
+  "finished_at": "YYYY-MM-DD",
+  "rating": 5,
+  "notes": "string"
+}
+
+### Create Reading Session
+POST {{API_BASE_URL}}/reading-sessions/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "book_id": 1,
+  "date": "YYYY-MM-DD",
+  "pages_read": 20,
+  "minutes": 30
+}
+
+###############################################################################
+# PERFUMERY (PerfumeryPage)
+###############################################################################
+
+### Create Perfume Formula
+POST {{API_BASE_URL}}/perfume-formulas/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "inspiration": "string",
+  "created_at": "YYYY-MM-DD",
+  "archived": false
+}
+
+### Update Perfume Formula
+PATCH {{API_BASE_URL}}/perfume-formulas/{{formula_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "inspiration": "string",
+  "archived": false
+}
+
+### Create Perfume Version
+POST {{API_BASE_URL}}/perfume-versions/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "formula_id": 1,
+  "version": "v1",
+  "date": "YYYY-MM-DD",
+  "unit": "drops|g|ml",
+  "ingredients": [
+    {
+      "name": "string",
+      "note": "top|heart|base",
+      "amount": 10,
+      "dilution": 100
+    }
+  ],
+  "alcohol_amount": 50,
+  "observations": "string",
+  "rating": 5
+}
+
+###############################################################################
+# WEALTH (WealthPage)
+###############################################################################
+
+### Create Savings Entry
+POST {{API_BASE_URL}}/savings-entries/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "amount": 1000,
+  "goal_id": null,
+  "note": "string",
+  "currency": "USD",
+  "location": "account|e-wallet|cash|investment"
+}
+
+### Create Savings Goal
+POST {{API_BASE_URL}}/savings-goals/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "target_amount": 10000,
+  "target_date": "YYYY-MM-DD",
+  "created_at": "YYYY-MM-DD",
+  "completed_at": null
+}
+
+### Update Savings Goal
+PATCH {{API_BASE_URL}}/savings-goals/{{goal_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "target_amount": 10000,
+  "target_date": "YYYY-MM-DD",
+  "completed_at": "YYYY-MM-DD"
+}
+
+### Create Purchase Plan
+POST {{API_BASE_URL}}/purchase-plans/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "price": 500,
+  "priority": "low|medium|high",
+  "created_at": "YYYY-MM-DD",
+  "purchased_at": null,
+  "notes": "string"
+}
+
+### Update Purchase Plan
+PATCH {{API_BASE_URL}}/purchase-plans/{{plan_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "price": 500,
+  "priority": "low|medium|high",
+  "purchased_at": "YYYY-MM-DD",
+  "notes": "string"
+}
+
+### Get Wealth Profile
+GET {{API_BASE_URL}}/wealth-profile/
+Authorization: Bearer {{access_token}}
+
+### Create Wealth Profile
+POST {{API_BASE_URL}}/wealth-profile/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "id": "string",
+  "currency": "USD",
+  "hourly_rate": 50,
+  "monthly_savings_target": 5000
+}
+
+### Update Wealth Profile
+PUT {{API_BASE_URL}}/wealth-profile/{{profile_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "currency": "USD",
+  "hourly_rate": 50,
+  "monthly_savings_target": 5000
+}
+
+###############################################################################
+# LIFE (LifePage)
+###############################################################################
+
+### Create Journal Entry
+POST {{API_BASE_URL}}/journal-entries/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "title": "string",
+  "body": "string",
+  "mood": 5,
+  "gratitude": "string"
+}
+
+### Create Person
+POST {{API_BASE_URL}}/people/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "relationship": "string",
+  "cadence_days": 7,
+  "last_contacted_at": null,
+  "notes": "string"
+}
+
+### Create Call Reminder
+POST {{API_BASE_URL}}/call-reminders/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "person_id": 1,
+  "due_date": "YYYY-MM-DD",
+  "completed_at": null,
+  "note": "string"
+}
+
+### Update Call Reminder
+PATCH {{API_BASE_URL}}/call-reminders/{{reminder_id}}/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "person_id": 1,
+  "due_date": "YYYY-MM-DD",
+  "completed_at": "YYYY-MM-DD",
+  "note": "string"
+}
+
+### Create Timeline Event
+POST {{API_BASE_URL}}/timeline-events/
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "date": "YYYY-MM-DD",
+  "title": "string",
+  "category": "milestone|memory|decision|travel|other",
+  "description": "string"
+}

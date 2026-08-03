@@ -361,6 +361,10 @@ function CycleTab() {
     isMenstruation: false
   };
 
+  // Calculate current cycle day based on most recent period, even if period ended
+  const currentCycleDay = mostRecentPeriod ? daysBetween(mostRecentPeriod.startDate) + 1 : 0;
+  const currentPhase = currentCycleDay > 0 ? getCurrentPhase(currentCycleDay, averageCycle) : null;
+
   function getCurrentPhase(day: number, cycleLength: number) {
     const normalizedDay = ((day - 1) % cycleLength) + 1;
     const lutealEnd = cycleLength;
@@ -467,32 +471,32 @@ const handleEditCycle = (cycle: { id?: number; startDate: string; endDate?: stri
   return (
     <div className="space-y-6">
       {/* Current Phase Card - Always show if there's any period history */}
-      {mostRecentPeriod && insights.currentPhase && (
+      {mostRecentPeriod && currentPhase && (
         <div className="bg-gradient-to-br from-[#6B2D3A] to-[#8B3D4A] rounded-2xl p-5 text-white">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA]">Current Phase</p>
-              <p className="font-serif text-xl">{insights.currentPhase.name}</p>
+              <p className="font-serif text-xl">{currentPhase.name}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA]">Cycle Day</p>
-              <p className="font-mono text-2xl">{insights.cycleDay}</p>
+              <p className="font-mono text-2xl">{currentCycleDay}</p>
             </div>
           </div>
           
           <div className="space-y-3 mb-4">
             <div className="bg-white/10 rounded-lg p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA] mb-1">Biological State</p>
-              <p className="text-sm leading-relaxed">{insights.currentPhase.biologicalState}</p>
+              <p className="text-sm leading-relaxed">{currentPhase.biologicalState}</p>
             </div>
             <div className="bg-white/10 rounded-lg p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#F2E8EA] mb-1">What to Expect</p>
-              <p className="text-sm leading-relaxed">{insights.currentPhase.expectedBehavior}</p>
+              <p className="text-sm leading-relaxed">{currentPhase.expectedBehavior}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {insights.currentPhase.symptoms.map((symptom) => (
+            {currentPhase.symptoms.map((symptom) => (
               <span key={symptom} className="px-3 py-1 bg-white/20 rounded-full text-xs">
                 {symptom}
               </span>
@@ -598,7 +602,7 @@ const handleEditCycle = (cycle: { id?: number; startDate: string; endDate?: stri
           <div className="flex items-center justify-between rounded-2xl border border-[#D9B7BE]/50 bg-[#F2E8EA] p-4 mb-4">
             <div>
               <p className="font-serif text-sm text-[#6B2D3A]">Period in progress</p>
-              <p className="text-xs text-[#8C7B75]">Started {formatDate(active.startDate)} · Day {insights.cycleDay}</p>
+              <p className="text-xs text-[#8C7B75]">Started {formatDate(active.startDate)} · Day {currentCycleDay}</p>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => setShowEndDatePicker(true)}>

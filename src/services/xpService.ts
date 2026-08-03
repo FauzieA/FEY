@@ -1,93 +1,137 @@
 import { db } from "@/db/dexie";
 import { syncService } from "@/services/syncService";
+import { consistencyService } from "@/services/consistencyService";
+import { calculateActivityXp, type Difficulty, type AttributeId } from "@/services/xpSystem";
 import { today } from "@/utils/date";
-import type { AttributeId, XpEvent, XpModule } from "@/types/modules";
+import type { XpEvent, XpModule } from "@/types/modules";
 
 /**
- * Every activity in FEY awards experience toward one character attribute.
- * This is the single registry of what an action is worth, so any module can
- * contribute to the character without duplicating scoring rules.
+ * Updated XP Service using the new calculation system.
+ * XP is calculated as: Base XP × Effort Multiplier × Consistency Multiplier
+ * XP is distributed among multiple attributes per activity.
  */
-export interface ActivityRule {
-  id: string;
-  label: string;
-  module: XpModule;
-  attribute: AttributeId;
-  xp: number;
-}
 
-export const ACTIVITY_RULES = {
+// Mapping from old activity IDs to new activity keys in xpSystem
+const ACTIVITY_KEY_MAP: Record<string, string> = {
   /* Training */
-  workout_session: { id: "workout_session", label: "Workout logged", module: "training", attribute: "strength", xp: 60 },
-  workout_set: { id: "workout_set", label: "Set completed", module: "training", attribute: "strength", xp: 5 },
-  daily_movement: { id: "daily_movement", label: "Daily movement", module: "training", attribute: "vitality", xp: 15 },
-  personal_record: { id: "personal_record", label: "Personal record", module: "training", attribute: "strength", xp: 80 },
+  workout_session: "gym_workout",
+  workout_set: "gym_workout", // Sets are part of gym workout
+  daily_movement: "mobility_session",
+  personal_record: "personal_record",
 
   /* Faith */
-  prayer_logged: { id: "prayer_logged", label: "Prayer on time", module: "faith", attribute: "devotion", xp: 20 },
-  quran_reading: { id: "quran_reading", label: "Qur'an reading", module: "faith", attribute: "devotion", xp: 30 },
-  quran_memorization: { id: "quran_memorization", label: "New memorization", module: "faith", attribute: "devotion", xp: 90 },
-  quran_revision: { id: "quran_revision", label: "Revision session", module: "faith", attribute: "devotion", xp: 35 },
-  adhkar_logged: { id: "adhkar_logged", label: "Adhkar", module: "faith", attribute: "devotion", xp: 15 },
-  fast_made_up: { id: "fast_made_up", label: "Missed fast made up", module: "faith", attribute: "discipline", xp: 70 },
+  prayer_logged: "all_prayers",
+  quran_reading: "quran_reading",
+  quran_memorization: "memorization",
+  quran_revision: "memorization",
+  adhkar_logged: "morning_adhkar",
+  fast_made_up: "fast_completed",
 
   /* Health */
-  weight_logged: { id: "weight_logged", label: "Weight logged", module: "health", attribute: "vitality", xp: 10 },
-  measurement_logged: { id: "measurement_logged", label: "Measurements taken", module: "health", attribute: "vitality", xp: 40 },
-  sleep_logged: { id: "sleep_logged", label: "Sleep logged", module: "health", attribute: "vitality", xp: 12 },
-  cycle_logged: { id: "cycle_logged", label: "Cycle logged", module: "health", attribute: "vitality", xp: 20 },
-  health_note: { id: "health_note", label: "Health note", module: "health", attribute: "vitality", xp: 10 },
+  weight_logged: "weight_logged",
+  measurement_logged: "weight_logged",
+  sleep_logged: "sleep_logged",
+  cycle_logged: "weight_logged",
+  health_note: "weight_logged",
 
   /* Library */
-  reading_session: { id: "reading_session", label: "Reading session", module: "library", attribute: "knowledge", xp: 25 },
-  book_finished: { id: "book_finished", label: "Book finished", module: "library", attribute: "knowledge", xp: 150 },
-  book_added: { id: "book_added", label: "Book added", module: "library", attribute: "knowledge", xp: 10 },
+  reading_session: "reading_session",
+  book_finished: "book_finished",
+  book_added: "reading_session",
 
   /* Perfumery */
-  formula_created: { id: "formula_created", label: "Formula created", module: "perfumery", attribute: "craft", xp: 50 },
-  version_logged: { id: "version_logged", label: "Version blended", module: "perfumery", attribute: "craft", xp: 40 },
+  formula_created: "formula_completed",
+  version_logged: "version_blended",
 
   /* Wealth */
-  savings_deposit: { id: "savings_deposit", label: "Savings deposit", module: "wealth", attribute: "stewardship", xp: 30 },
-  goal_created: { id: "goal_created", label: "Savings goal set", module: "wealth", attribute: "stewardship", xp: 20 },
-  goal_completed: { id: "goal_completed", label: "Savings goal reached", module: "wealth", attribute: "stewardship", xp: 200 },
-  purchase_planned: { id: "purchase_planned", label: "Purchase planned", module: "wealth", attribute: "stewardship", xp: 15 },
+  savings_deposit: "savings_deposit",
+  goal_created: "savings_deposit",
+  goal_completed: "goal_reached",
+  purchase_planned: "savings_deposit",
 
   /* Life */
-  journal_entry: { id: "journal_entry", label: "Journal entry", module: "life", attribute: "discipline", xp: 30 },
-  person_contacted: { id: "person_contacted", label: "Person reached out to", module: "life", attribute: "connection", xp: 40 },
-  timeline_event: { id: "timeline_event", label: "Timeline event", module: "life", attribute: "connection", xp: 20 },
-} satisfies Record<string, ActivityRule>;
+  journal_entry: "journal_entry",
+  person_contacted: "contact_made",
+  timeline_event: "journal_entry",
+};
 
-export type ActivityId = keyof typeof ACTIVITY_RULES;
+// Mapping from old activity IDs to modules
+const ACTIVITY_MODULE_MAP: Record<string, XpModule> = {
+  workout_session: "training",
+  workout_set: "training",
+  daily_movement: "training",
+  personal_record: "training",
+  prayer_logged: "faith",
+  quran_reading: "faith",
+  quran_memorization: "faith",
+  quran_revision: "faith",
+  adhkar_logged: "faith",
+  fast_made_up: "faith",
+  weight_logged: "health",
+  measurement_logged: "health",
+  sleep_logged: "health",
+  cycle_logged: "health",
+  health_note: "health",
+  reading_session: "library",
+  book_finished: "library",
+  book_added: "library",
+  formula_created: "perfumery",
+  version_logged: "perfumery",
+  savings_deposit: "wealth",
+  goal_created: "wealth",
+  goal_completed: "wealth",
+  purchase_planned: "wealth",
+  journal_entry: "life",
+  person_contacted: "life",
+  timeline_event: "life",
+};
 
-/** Records an XP event for an activity. Multiplier scales repeated units (sets, pages...). */
+export type ActivityId = keyof typeof ACTIVITY_KEY_MAP;
+
+/** Records an XP event for an activity using the new calculation system. */
 export async function logActivity(
   activity: ActivityId,
-  options: { multiplier?: number; date?: string } = {},
+  options: { multiplier?: number; date?: string; difficulty?: Difficulty } = {},
 ): Promise<number> {
-  const rule = ACTIVITY_RULES[activity] as ActivityRule;
+  const activityKey = ACTIVITY_KEY_MAP[activity] || activity;
+  const module = ACTIVITY_MODULE_MAP[activity] || "life";
+  const date = options.date ?? today();
+
+  // Get consecutive days for consistency multiplier
+  const consecutiveDays = await consistencyService.getConsecutiveDays(activityKey);
+
+  // Calculate XP using the new system
+  const xpResult = calculateActivityXp(activityKey, consecutiveDays, options.difficulty);
   const multiplier = options.multiplier ?? 1;
-  const amount = Math.round(rule.xp * multiplier);
+  const totalXp = Math.round(xpResult.totalXp * multiplier);
 
-  const event: XpEvent = {
-    module: rule.module,
-    activity: rule.id,
-    attribute: rule.attribute,
-    amount,
-    date: options.date ?? today(),
-    createdAt: new Date().toISOString(),
-  };
+  // Create XP events for each attribute
+  for (const breakdown of xpResult.breakdown) {
+    const amount = Math.round(breakdown.xp * multiplier);
+    if (amount <= 0) continue;
 
-  // Save to local Dexie immediately
-  await db.xpEvents.add(event);
+    const event: XpEvent = {
+      module,
+      activity: activityKey,
+      attribute: breakdown.attribute as AttributeId,
+      amount,
+      date,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Save to local Dexie immediately
+    await db.xpEvents.add(event);
+    
+    // Queue sync to backend
+    syncService.queueSync('xp', event);
+  }
+
+  // Invalidate consistency cache after logging
+  consistencyService.invalidateCache(activityKey);
   
-  // Queue sync to backend
-  syncService.queueSync('xp', event);
-  
-  return amount;
+  return totalXp;
 }
 
 export function activityLabel(activityId: string): string {
-  return (ACTIVITY_RULES as Record<string, ActivityRule>)[activityId]?.label ?? activityId;
+  return activityId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
