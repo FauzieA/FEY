@@ -8,25 +8,25 @@ export const HealthRepository = {
   async logWeight(entry: Omit<WeightLog, "id">): Promise<void> {
     await db.weights.add(entry);
     await logActivity("weight_logged", { date: entry.date });
-    syncService.queueSync('weight', entry);
+    syncService.queueSync('weight', entry, 'create');
   },
 
   async addMeasurement(entry: Omit<Measurement, "id">): Promise<void> {
     await db.measurements.add(entry);
     await logActivity("measurement_logged", { date: entry.date });
-    syncService.queueSync('measurement', entry);
+    syncService.queueSync('measurement', entry, 'create');
   },
 
   async logSleep(entry: Omit<SleepLog, "id">): Promise<void> {
     await db.sleepLogs.add(entry);
     await logActivity("sleep_logged", { date: entry.date });
-    syncService.queueSync('sleep', entry);
+    syncService.queueSync('sleep', entry, 'create');
   },
 
   async startCycle(entry: Omit<CycleLog, "id">): Promise<void> {
     await db.cycleLogs.add(entry);
     await logActivity("cycle_logged", { date: entry.startDate });
-    syncService.queueSync('cycle', entry);
+    syncService.queueSync('cycle', entry, 'create');
   },
 
   async endCycle(id: number, endDate = today()): Promise<void> {
@@ -37,7 +37,7 @@ export const HealthRepository = {
   async addHealthNote(entry: Omit<HealthNote, "id">): Promise<void> {
     await db.healthNotes.add(entry);
     await logActivity("health_note", { date: entry.date });
-    syncService.queueSync('health_note', entry);
+    syncService.queueSync('health_note', entry, 'create');
   },
 
   async remove(table: "weights" | "sleepLogs" | "measurements" | "healthNotes", id: number): Promise<void> {

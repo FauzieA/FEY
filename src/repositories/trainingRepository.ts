@@ -44,8 +44,8 @@ export const TrainingRepository = {
       if (isRecord) await logActivity("personal_record", { date, difficulty: "hard" as const });
     }
 
-    // Queue sync to backend
-    syncService.queueSync('workout', session);
+    // Queue sync to backend (explicitly mark as create so the sync service posts it)
+    syncService.queueSync('workout', session, 'create');
   },
 
   /** Every logged set across all sessions, newest first. */

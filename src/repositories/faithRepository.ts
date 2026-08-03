@@ -58,7 +58,7 @@ export const FaithRepository = {
     await db.quranReading.add(entry);
     
     // Queue sync to backend
-    syncService.queueSync('quran_reading', entry);
+    syncService.queueSync('quran_reading', entry, 'create');
     
     await logActivity("quran_reading", { date: entry.date });
   },
@@ -68,7 +68,7 @@ export const FaithRepository = {
     await db.memorization.add(entry);
     
     // Queue sync to backend
-    syncService.queueSync('memorization', entry);
+    syncService.queueSync('memorization', entry, 'create');
     
     if (entry.status === "memorized") await logActivity("quran_memorization", { date: entry.startedAt });
   },
@@ -93,7 +93,7 @@ export const FaithRepository = {
     await db.revisions.add(entry);
     
     // Queue sync to backend
-    syncService.queueSync('revision', entry);
+    syncService.queueSync('revision', entry, 'create');
     
     await db.memorization
       .where("surah")
@@ -157,7 +157,7 @@ export const FaithRepository = {
     await db.missedFasts.add(entry);
     
     // Queue sync to backend
-    syncService.queueSync('missed_fast', entry);
+    syncService.queueSync('missed_fast', entry, 'create');
   },
 
   async markFastMadeUp(id: number, date = today()): Promise<void> {

@@ -8,14 +8,14 @@ export const LifeRepository = {
   async addJournalEntry(entry: Omit<JournalEntry, "id">): Promise<void> {
     await db.journalEntries.add(entry);
     await logActivity("journal_entry", { date: entry.date });
-    syncService.queueSync('journal', entry);
+    syncService.queueSync('journal', entry, 'create');
   },
 
   async addPerson(person: Omit<Person, "id">): Promise<number> {
     const id = await db.people.add(person);
     await db.callReminders.add({ personId: id, dueDate: addDays(today(), person.cadenceDays), completedAt: null });
-    syncService.queueSync('person', person);
-    syncService.queueSync('call_reminder', { personId: id, dueDate: addDays(today(), person.cadenceDays), completedAt: null });
+    syncService.queueSync('person', person, 'create');
+    syncService.queueSync('call_reminder', { personId: id, dueDate: addDays(today(), person.cadenceDays), completedAt: null }, 'create');
     return id;
   },
 
@@ -38,7 +38,7 @@ export const LifeRepository = {
         personId: person.id!,
         dueDate: addDays(today(), person.cadenceDays),
         completedAt: null,
-      });
+      }, 'create');
     }
     await logActivity("person_contacted");
     syncService.queueSync('call_reminder_complete', { id: reminderId, completedAt: today() });
@@ -46,13 +46,13 @@ export const LifeRepository = {
 
   async addReminder(reminder: Omit<CallReminder, "id">): Promise<void> {
     await db.callReminders.add(reminder);
-    syncService.queueSync('call_reminder', reminder);
+    syncService.queueSync('call_reminder', reminder, 'create');
   },
 
   async addTimelineEvent(event: Omit<TimelineEvent, "id">): Promise<void> {
     await db.timelineEvents.add(event);
     await logActivity("timeline_event", { date: event.date });
-    syncService.queueSync('timeline', event);
+    syncService.queueSync('timeline', event, 'create');
   },
 
   async removePerson(id: number): Promise<void> {

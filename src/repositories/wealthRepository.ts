@@ -25,14 +25,14 @@ export const WealthRepository = {
   async addSavings(entry: Omit<SavingsEntry, "id">): Promise<void> {
     await db.savingsEntries.add(entry);
     await logActivity("savings_deposit", { date: entry.date });
-    syncService.queueSync('savings', entry);
+    syncService.queueSync('savings', entry, 'create');
     if (entry.goalId) await WealthRepository.settleGoal(entry.goalId);
   },
 
   async addGoal(goal: Omit<SavingsGoal, "id" | "createdAt">): Promise<void> {
     await db.savingsGoals.add({ ...goal, createdAt: today() });
     await logActivity("goal_created");
-    syncService.queueSync('savings_goal', { ...goal, createdAt: today() });
+    syncService.queueSync('savings_goal', { ...goal, createdAt: today() }, 'create');
   },
 
   /** Marks a goal complete once its deposits cover the target. */
@@ -51,7 +51,7 @@ export const WealthRepository = {
   async addPurchasePlan(plan: Omit<PurchasePlan, "id" | "createdAt">): Promise<void> {
     await db.purchasePlans.add({ ...plan, createdAt: today() });
     await logActivity("purchase_planned");
-    syncService.queueSync('purchase_plan', { ...plan, createdAt: today() });
+    syncService.queueSync('purchase_plan', { ...plan, createdAt: today() }, 'create');
   },
 
   async markPurchased(id: number): Promise<void> {

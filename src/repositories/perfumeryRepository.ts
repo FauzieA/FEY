@@ -8,14 +8,14 @@ export const PerfumeryRepository = {
   async createFormula(formula: Omit<PerfumeFormula, "id" | "createdAt">): Promise<number> {
     const id = await db.perfumeFormulas.add({ ...formula, createdAt: today() });
     await logActivity("formula_created");
-    syncService.queueSync('perfume_formula', { ...formula, createdAt: today() });
+    syncService.queueSync('perfume_formula', { ...formula, createdAt: today() }, 'create');
     return id;
   },
 
   async addVersion(version: Omit<PerfumeVersion, "id">): Promise<void> {
     await db.perfumeVersions.add(version);
     await logActivity("version_logged", { date: version.date });
-    syncService.queueSync('perfume_version', version);
+    syncService.queueSync('perfume_version', version, 'create');
   },
 
   async archiveFormula(id: number, archived: boolean): Promise<void> {

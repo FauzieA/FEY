@@ -123,7 +123,7 @@ export async function logActivity(
     await db.xpEvents.add(event);
     
     // Queue sync to backend
-    syncService.queueSync('xp', event);
+    syncService.queueSync('xp', event, 'create');
   }
 
   // Invalidate consistency cache after logging

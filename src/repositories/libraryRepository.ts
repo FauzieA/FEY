@@ -8,7 +8,7 @@ export const LibraryRepository = {
   async addBook(book: Omit<Book, "id">): Promise<void> {
     await db.books.add(book);
     await logActivity("book_added");
-    syncService.queueSync('book', book);
+    syncService.queueSync('book', book, 'create');
   },
 
   /** Records a reading session and advances the book's current page. */
@@ -21,7 +21,7 @@ export const LibraryRepository = {
     await db.books.update(bookId, { currentPage: nextPage });
     await logActivity("reading_session", { date });
 
-    syncService.queueSync('reading_session', { bookId, date, pagesRead, minutes });
+    syncService.queueSync('reading_session', { bookId, date, pagesRead, minutes }, 'create');
     syncService.queueSync('book', { id: bookId, currentPage: nextPage });
 
     if (nextPage >= book.totalPages && book.status !== "finished") {

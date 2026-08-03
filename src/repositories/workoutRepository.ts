@@ -23,7 +23,7 @@ export class WorkoutRepository {
     const id = await db.sessions.add(session);
     
     // Queue sync to backend
-    syncService.queueSync('workout', session);
+    syncService.queueSync('workout', session, 'create');
     
     return id;
   }
@@ -61,11 +61,18 @@ export class WorkoutRepository {
       }
       
       // Queue sync to backend
-      syncService.queueSync('personal_record', {
+      const prPayload = {
         exerciseId,
         weight: weightKg,
         date: new Date().toISOString(),
-      });
+      } as const;
+
+      if (existingPr && existingPr.id !== undefined) {
+        // include id for update
+        syncService.queueSync('personal_record', { id: existingPr.id, ...prPayload }, 'update');
+      } else {
+        syncService.queueSync('personal_record', prPayload, 'create');
+      }
       
       return true; // Indicates a new PR was set!
     }
