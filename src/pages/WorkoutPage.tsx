@@ -11,6 +11,41 @@ import RestTimerBar from "@/components/workout/RestTimerBar";
 import SetsTable, {type SetItem } from "@/components/workout/SetsTable";
 import ExerciseNotes from "@/components/workout/ExerciseNotes";
 
+function parseRepRange(repRange: string) {
+  const match = repRange.match(/(\d+)(?:-(\d+))?/);
+  if (!match) return 10;
+  const low = Number(match[1]);
+  const high = match[2] ? Number(match[2]) : low;
+  return Math.max(low, high, 10);
+}
+
+function getExerciseHistoryDefaults(exercise: typeof EXERCISE_DATABASE[number], logs: any[]) {
+  const sets = logs.flatMap((session) =>
+    (session.exercises ?? [])
+      .filter((exerciseEntry: any) => exerciseEntry.exerciseId === exercise.id)
+      .flatMap((exerciseEntry: any) => exerciseEntry.sets ?? [])
+  );
+
+  const highestWeightKg = Math.max(
+    exercise.defaultWeightKg ?? 0,
+    ...sets.map((set: any) => set.weightKg ?? set.weight ?? 0)
+  );
+  const highestReps = Math.max(
+    parseRepRange(exercise.repRange),
+    ...sets.map((set: any) => set.reps ?? 0)
+  );
+  const highestDurationSec = Math.max(
+    exercise.defaultTimeSeconds ?? 0,
+    ...sets.map((set: any) => set.durationSec ?? 0)
+  );
+
+  return {
+    weightKg: highestWeightKg,
+    reps: highestReps,
+    durationSec: Math.max(highestDurationSec, 10),
+  };
+}
+
 export default function WorkoutPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -38,6 +73,13 @@ export default function WorkoutPage() {
     );
   }, [exercise.id, todayStr]);
 
+  const exerciseLogs = useLiveQuery(async () => {
+    return db.sessions
+      .where("id")
+      .startsWith(`session_${exercise.id}_`)
+      .toArray();
+  }, [exercise.id]);
+
   const [sets, setSets] = useState<SetItem[]>(() => {
     const count = exercise.defaultSets || 3;
     return Array.from({ length: count }, (_, i) => ({
@@ -62,19 +104,24 @@ export default function WorkoutPage() {
   const [isRestActive, setIsRestActive] = useState(false);
 
   useEffect(() => {
-    if (!existingLog) {
-      const count = exercise.defaultSets || 3;
-      setSets(
-        Array.from({ length: count }, (_, i) => ({
-          setNum: i + 1,
-          weightKg: exercise.defaultWeightKg || 0,
-          reps: 10,
-          durationSec: exercise.defaultTimeSeconds || 10,
-          completed: false,
-        }))
-      );
-    }
-  }, [exercise, existingLog]);
+    if (existingLog || !exerciseLogs) return;
+
+    const bestDefaults = getExerciseHistoryDefaults(exercise, exerciseLogs);
+    const count = exercise.defaultSets || 3;
+
+    setSets(
+      Array.from({ length: count }, (_, i) => ({
+        setNum: i + 1,
+        weightKg: bestDefaults.weightKg,
+        reps: bestDefaults.reps,
+        durationSec:
+          exercise.type === "time"
+            ? bestDefaults.durationSec
+            : exercise.defaultTimeSeconds || 10,
+        completed: false,
+      }))
+    );
+  }, [exercise, existingLog, exerciseLogs]);
 
   useEffect(() => {
     if (existingLog?.exercises?.[0]?.sets) {

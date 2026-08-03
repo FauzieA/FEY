@@ -19,6 +19,49 @@ import HeroOverview from "@/components/evolution/HeroOverview";
 import MuscleMap from "@/components/evolution/MuscleMap";
 import PerformanceTrends from "@/components/evolution/PerformanceTrends";
 
+function parseRepRange(repRange: string) {
+  const match = repRange.match(/(\d+)(?:-(\d+))?/);
+  if (!match) return 10;
+  const low = Number(match[1]);
+  const high = match[2] ? Number(match[2]) : low;
+  return Math.max(low, high, 10);
+}
+
+function getExerciseDefaultsFromSnapshot(exerciseId: string, sessions: any[], exerciseDef: typeof EXERCISE_DATABASE[number]) {
+  const exerciseSessions = sessions.filter((session) =>
+    (session.exercises ?? []).some((ex: any) => ex.exerciseId === exerciseId)
+  );
+  const sets = exerciseSessions.flatMap((session) =>
+    (session.exercises ?? [])
+      .filter((ex: any) => ex.exerciseId === exerciseId)
+      .flatMap((ex: any) => ex.sets ?? [])
+  );
+
+  const highestWeightKg = Math.max(
+    exerciseDef.defaultWeightKg ?? 0,
+    ...sets.map((set: any) => set.weightKg ?? set.weight ?? 0)
+  );
+  const highestReps = Math.max(
+    parseRepRange(exerciseDef.repRange),
+    ...sets.map((set: any) => set.reps ?? 0)
+  );
+  const highestDurationSec = Math.max(
+    exerciseDef.defaultTimeSeconds ?? 0,
+    ...sets.map((set: any) => set.durationSec ?? 0)
+  );
+  const highestDurationMinutes = Math.max(
+    0,
+    ...exerciseSessions.map((session) => session.durationMinutes ?? 0)
+  );
+
+  return {
+    weightKg: highestWeightKg,
+    reps: highestReps,
+    durationSec: Math.max(highestDurationSec, 10),
+    durationMinutes: Math.max(highestDurationMinutes, 0),
+  };
+}
+
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "log", label: "Log a workout" },
@@ -229,7 +272,7 @@ function HistoryTab() {
             key={session.id}
             title={session.planTitle ?? session.exercises?.[0]?.exerciseName ?? "Session"}
             subtitle={session.exercises?.map((exercise) => exercise.exerciseName ?? exercise.name).join(", ")}
-            meta={`${formatDate(String(session.completedAt))} · ${formatNumber(session.totalVolumeKg ?? 0)} kg`}
+            meta={formatDate(String(session.completedAt))}
           >
             <div className="flex flex-wrap gap-1.5">
               {(session.exercises ?? []).flatMap((exercise) =>
@@ -259,7 +302,13 @@ function WeeklySummaryTab() {
   const weekStart = startOfWeek();
   const sessionsThisWeek = snapshot.sessions.filter((session) => toISODate(session.completedAt) >= weekStart);
 
-  const totalVolume = sessionsThisWeek.reduce((sum, session) => sum + (session.totalVolumeKg ?? 0), 0);
+  const uniqueExercises = new Set<string>();
+  sessionsThisWeek.forEach((session) => {
+    session.exercises?.forEach((exercise) => {
+      if (exercise.exerciseId) uniqueExercises.add(exercise.exerciseId);
+    });
+  });
+
   const totalSets = sessionsThisWeek.reduce((sum, session) => {
     return sum + (session.exercises ?? []).reduce((exSum, ex) => exSum + (ex.sets ?? []).length, 0);
   }, 0);
@@ -269,7 +318,7 @@ function WeeklySummaryTab() {
       <Section title="This week's summary">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label="Sessions" value={sessionsThisWeek.length} tone="burgundy" />
-          <StatTile label="Volume" value={`${formatNumber(totalVolume)} kg`} />
+          <StatTile label="Exercises" value={uniqueExercises.size} />
           <StatTile label="Total sets" value={totalSets} />
           <StatTile label="Completion" value={`${percent(sessionsThisWeek.length, 5)}%`} />
         </div>
@@ -282,7 +331,6 @@ function WeeklySummaryTab() {
               key={session.id}
               title={session.planTitle ?? session.exercises?.[0]?.exerciseName ?? "Session"}
               subtitle={formatDate(String(session.completedAt))}
-              meta={`${formatNumber(session.totalVolumeKg ?? 0)} kg`}
             />
           ))}
           {sessionsThisWeek.length === 0 && (

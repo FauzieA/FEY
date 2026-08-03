@@ -59,7 +59,7 @@ export default function SetsTable({
               )}
 
               <div
-                className={`flex items-center justify-between gap-2 p-3 rounded-2xl border transition-all ${
+                className={`flex flex-col gap-3 sm:flex-row sm:items-center justify-between p-3 rounded-2xl border transition-all ${
                   st.completed
                     ? "bg-[#F2E8EA]/60 border-[#6B2D3A] text-[#1A1817]"
                     : isTimerRunning
@@ -67,11 +67,11 @@ export default function SetsTable({
                     : "bg-[#F8F5F2] border-[#EAE3DE] text-[#1A1817]"
                 }`}
               >
-                <span className="font-serif font-bold text-xs sm:text-sm shrink-0 w-10">
+                <span className="font-serif font-bold text-sm sm:text-base shrink-0 w-10">
                   Set {st.setNum}
                 </span>
 
-                <div className="flex items-center justify-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {exerciseType === "weight_reps" && (
                     <div className="flex items-center gap-1 bg-white border border-[#EAE3DE] rounded-xl px-2 py-1 shrink-0">
                       <input
@@ -91,16 +91,18 @@ export default function SetsTable({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => onUpdateSet(idx, "reps", st.reps - 1)}
-                        className="w-6 h-6 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        className="w-8 h-8 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        aria-label="Decrease reps"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="font-mono text-xs sm:text-sm font-bold min-w-[32px] text-center">
-                        {st.reps}reps
+                      <span className="font-mono text-sm sm:text-base font-bold min-w-[44px] text-center px-1">
+                        {st.reps} reps
                       </span>
                       <button
                         onClick={() => onUpdateSet(idx, "reps", st.reps + 1)}
-                        className="w-6 h-6 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        className="w-8 h-8 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        aria-label="Increase reps"
                       >
                         <Plus className="w-3 h-3" />
                       </button>

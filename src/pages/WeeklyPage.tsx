@@ -15,6 +15,7 @@ export default function WeeklyPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get("category") || "all";
+  const statusFilter = searchParams.get("status") || "all";
 
   // 🔄 LIVE QUERY: Read sessions directly from Dexie
   const sessions = useLiveQuery(() => db.sessions.toArray()) || [];
@@ -52,9 +53,23 @@ export default function WeeklyPage() {
       (activeCategory === "all" || ex.category === activeCategory)
   );
 
+  const filteredExercises = weeklyExercises.filter((ex) => {
+    const currentCount = exerciseCompletionCounts[ex.id] || 0;
+    const target = ex.requiredPerWeek || 1;
+    if (statusFilter === "completed") return currentCount >= target;
+    if (statusFilter === "pending") return currentCount < target;
+    return true;
+  });
+
   const categoryTabs = [
     { id: "all", name: "All Categories" },
     ...WEEKLY_CATEGORIES.map((c) => ({ id: c.id, name: c.name })),
+  ];
+
+  const statusTabs = [
+    { id: "all", name: "All" },
+    { id: "pending", name: "Remaining" },
+    { id: "completed", name: "Completed" },
   ];
 
   return (
@@ -97,7 +112,11 @@ export default function WeeklyPage() {
         {categoryTabs.map((cat) => (
           <button
             key={cat.id}
-            onClick={() => setSearchParams({ category: cat.id })}
+            onClick={() => {
+              const params = new URLSearchParams(searchParams);
+              params.set("category", cat.id);
+              setSearchParams(params);
+            }}
             className={`px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
               activeCategory === cat.id
                 ? "bg-[#6B2D3A] text-[#F8F5F2] shadow-sm"
@@ -109,14 +128,35 @@ export default function WeeklyPage() {
         ))}
       </div>
 
+      {/* Completion Filter Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {statusTabs.map((status) => (
+          <button
+            key={status.id}
+            onClick={() => {
+              const params = new URLSearchParams(searchParams);
+              params.set("status", status.id);
+              setSearchParams(params);
+            }}
+            className={`px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusFilter === status.id
+                ? "bg-[#6B2D3A] text-[#F8F5F2] shadow-sm"
+                : "bg-[#FFFCFA] border border-[#EAE3DE] text-[#8C7B75] hover:border-[#6B2D3A]"
+            }`}
+          >
+            {status.name}
+          </button>
+        ))}
+      </div>
+
       {/* Exercise Cards */}
       <div className="space-y-3">
-        {weeklyExercises.map((ex) => {
+        {filteredExercises.map((ex) => {
           const currentCount = exerciseCompletionCounts[ex.id] || 0;
           const target = ex.requiredPerWeek || 1;
           const isDone = currentCount >= target;
           const returnUrl = encodeURIComponent(
-            `/weekly?category=${activeCategory}`
+            `/weekly?category=${activeCategory}&status=${statusFilter}`
           );
 
           return (
