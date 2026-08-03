@@ -14,53 +14,11 @@ import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { TrainingRepository } from "@/repositories/trainingRepository";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { formatDate, startOfWeek, toISODate, today, weekDates, weekdayLabel } from "@/utils/date";
-import { formatNumber, percent } from "@/utils/format";
+import { percent } from "@/utils/format";
 import HeroOverview from "@/components/evolution/HeroOverview";
 import MuscleMap from "@/components/evolution/MuscleMap";
 import PerformanceTrends from "@/components/evolution/PerformanceTrends";
 
-function parseRepRange(repRange: string) {
-  const match = repRange.match(/(\d+)(?:-(\d+))?/);
-  if (!match) return 10;
-  const low = Number(match[1]);
-  const high = match[2] ? Number(match[2]) : low;
-  return Math.max(low, high, 10);
-}
-
-function getExerciseDefaultsFromSnapshot(exerciseId: string, sessions: any[], exerciseDef: typeof EXERCISE_DATABASE[number]) {
-  const exerciseSessions = sessions.filter((session) =>
-    (session.exercises ?? []).some((ex: any) => ex.exerciseId === exerciseId)
-  );
-  const sets = exerciseSessions.flatMap((session) =>
-    (session.exercises ?? [])
-      .filter((ex: any) => ex.exerciseId === exerciseId)
-      .flatMap((ex: any) => ex.sets ?? [])
-  );
-
-  const highestWeightKg = Math.max(
-    exerciseDef.defaultWeightKg ?? 0,
-    ...sets.map((set: any) => set.weightKg ?? set.weight ?? 0)
-  );
-  const highestReps = Math.max(
-    parseRepRange(exerciseDef.repRange),
-    ...sets.map((set: any) => set.reps ?? 0)
-  );
-  const highestDurationSec = Math.max(
-    exerciseDef.defaultTimeSeconds ?? 0,
-    ...sets.map((set: any) => set.durationSec ?? 0)
-  );
-  const highestDurationMinutes = Math.max(
-    0,
-    ...exerciseSessions.map((session) => session.durationMinutes ?? 0)
-  );
-
-  return {
-    weightKg: highestWeightKg,
-    reps: highestReps,
-    durationSec: Math.max(highestDurationSec, 10),
-    durationMinutes: Math.max(highestDurationMinutes, 0),
-  };
-}
 
 const TABS = [
   { id: "overview", label: "Overview" },
