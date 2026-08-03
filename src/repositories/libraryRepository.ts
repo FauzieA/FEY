@@ -38,7 +38,7 @@ export const LibraryRepository = {
       currentPage: book.totalPages,
       rating: rating ?? book.rating,
     });
-    await logActivity("book_finished", { date });
+    await logActivity("book_finished", { date, difficulty: "hard" as const });
     syncService.queueSync('book', { id: bookId, status: 'finished', finishedAt: date, rating });
   },
 

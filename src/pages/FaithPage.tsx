@@ -15,6 +15,7 @@ import { formatDate, today, weekdayLabel, weekDates, currentStreak, relativeDay 
 import { titleCase } from "@/utils/format";
 import { getRandomPrayerQuote } from "@/data/prayerQuotes";
 import { ADHKAR_DATA, getDailyIstighfarQuote } from "@/data/adhkarData";
+import { SURAH_DATA } from "@/data/surahData";
 
 const TABS = [
   { id: "prayer", label: "Prayer" },
@@ -308,7 +309,17 @@ function QuranTab() {
           }}
         >
           <Field label="Surah">
-            <TextInput value={memo.surah} placeholder="An-Naba" onChange={(e) => setMemo({ ...memo, surah: e.target.value })} />
+            <Select value={memo.surah} onChange={(e) => {
+              const selectedSurah = SURAH_DATA.find(s => s.name === e.target.value);
+              setMemo({ ...memo, surah: e.target.value, toAyah: selectedSurah ? String(selectedSurah.verses) : "" });
+            }}>
+              <option value="">Select Surah</option>
+              {SURAH_DATA.map((surah) => (
+                <option key={surah.number} value={surah.name}>
+                  {surah.number}. {surah.name} ({surah.englishName}) - {surah.verses} verses
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Status">
             <Select value={memo.status} onChange={(e) => setMemo({ ...memo, status: e.target.value as MemorizationStatus })}>
@@ -328,12 +339,15 @@ function QuranTab() {
         <div className="space-y-2">
           {snapshot.memorization.length === 0 && <EmptyState title="No passages tracked yet" />}
           {snapshot.memorization.map((entry) => {
+            const surahInfo = SURAH_DATA.find(s => s.name === entry.surah);
+            const totalVerses = surahInfo ? surahInfo.verses : (entry.toAyah - entry.fromAyah + 1);
             const versesCount = entry.toAyah - entry.fromAyah + 1;
+            const progress = Math.round((versesCount / totalVerses) * 100);
             return (
               <ListRow
                 key={entry.id}
                 title={`${entry.surah} (${entry.fromAyah}–${entry.toAyah})`}
-                subtitle={`${versesCount} verses · Started ${formatDate(entry.startedAt)}${entry.lastReviewedAt ? ` · reviewed ${relativeDay(entry.lastReviewedAt)}` : ""}`}
+                subtitle={`${versesCount} verses · ${progress}% of surah · Started ${formatDate(entry.startedAt)}${entry.lastReviewedAt ? ` · reviewed ${relativeDay(entry.lastReviewedAt)}` : ""}`}
                 meta={`${entry.status}`}
                 actions={
                   <Select
@@ -358,56 +372,34 @@ function QuranTab() {
 /* --------------------------------- Adhkar --------------------------------- */
 
 function AdhkarTab() {
-  const [morningIndex, setMorningIndex] = useState(0);
-  const [eveningIndex, setEveningIndex] = useState(0);
+  const snapshot = useFeySnapshot();
+  const [adhkarSubTab, setAdhkarSubTab] = useState<"morning" | "evening">("morning");
   const [istighfarQuote, setIstighfarQuote] = useState<string>("");
-  const [completedAdhkar, setCompletedAdhkar] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIstighfarQuote(getDailyIstighfarQuote());
   }, []);
 
+  // Get today's adhkar log from snapshot
+  const todayIso = today();
+  const todayAdhkarLog = snapshot.adhkarLogs.find((log: any) => log.date === todayIso);
+  const completedItems = new Set(todayAdhkarLog?.completedItems || []);
+
   // Separate morning and evening adhkar
   const morningAdhkar = ADHKAR_DATA.morning?.items.map((item) => ({ ...item, category: "Morning", categoryId: "morning" })) || [];
   const eveningAdhkar = ADHKAR_DATA.evening?.items.map((item) => ({ ...item, category: "Evening", categoryId: "evening" })) || [];
 
-  const currentMorning = morningAdhkar[morningIndex];
-  const currentEvening = eveningAdhkar[eveningIndex];
+  const currentAdhkar = adhkarSubTab === "morning" ? morningAdhkar : eveningAdhkar;
 
-  const toggleAdhkarItem = (categoryId: string, itemId: string) => {
-    const key = `${categoryId}_${itemId}`;
-    setCompletedAdhkar((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) {
-        newSet.delete(key);
-      } else {
-        newSet.add(key);
-      }
-      return newSet;
-    });
+  const toggleAdhkarItem = async (categoryId: string, itemId: string) => {
+    await FaithRepository.toggleAdhkarItem(todayIso, categoryId, itemId);
   };
 
-  const isCompleted = (categoryId: string, itemId: string) => completedAdhkar.has(`${categoryId}_${itemId}`);
-  const completedCount = completedAdhkar.size;
+  const isCompleted = (categoryId: string, itemId: string) => completedItems.has(`${categoryId}_${itemId}`);
+  const completedCount = completedItems.size;
   const totalAdhkar = morningAdhkar.length + eveningAdhkar.length;
 
-  const goToPrevious = (type: "morning" | "evening") => {
-    if (type === "morning") {
-      setMorningIndex((prev) => (prev > 0 ? prev - 1 : morningAdhkar.length - 1));
-    } else {
-      setEveningIndex((prev) => (prev > 0 ? prev - 1 : eveningAdhkar.length - 1));
-    }
-  };
-
-  const goToNext = (type: "morning" | "evening") => {
-    if (type === "morning") {
-      setMorningIndex((prev) => (prev < morningAdhkar.length - 1 ? prev + 1 : 0));
-    } else {
-      setEveningIndex((prev) => (prev < eveningAdhkar.length - 1 ? prev + 1 : 0));
-    }
-  };
-
-  const AdhkarCard = ({ adhkar, index, type, total }: { adhkar: any, index: number, type: "morning" | "evening", total: number }) => {
+  const AdhkarCard = ({ adhkar, index, total }: { adhkar: any, index: number, total: number }) => {
     const completed = isCompleted(adhkar.categoryId, adhkar.id);
     return (
       <div className="bg-[#FFFCFA] border border-[#EAE3DE] rounded-3xl p-6 shadow-sm">
@@ -453,35 +445,17 @@ function AdhkarTab() {
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={() => goToPrevious(type)}
-            className="flex-1 py-3 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
-          >
-            ← Previous
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => toggleAdhkarItem(adhkar.categoryId, adhkar.id)}
-            className={`flex-1 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-              completed
-                ? "bg-[#6B2D3A] text-white"
-                : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#6B2D3A] hover:text-white"
-            }`}
-          >
-            {completed ? "✓ Completed" : "Mark Complete"}
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => goToNext(type)}
-            className="flex-1 py-3 rounded-xl border border-[#EAE3DE] bg-[#FFFCFA] text-[#6B2D3A] hover:bg-[#F2E8EA] transition-colors text-sm font-medium cursor-pointer"
-          >
-            Next →
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => toggleAdhkarItem(adhkar.categoryId, adhkar.id)}
+          className={`w-full py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+            completed
+              ? "bg-[#6B2D3A] text-white"
+              : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#6B2D3A] hover:text-white"
+          }`}
+        >
+          {completed ? "✓ Completed" : "Mark Complete"}
+        </button>
       </div>
     );
   };
@@ -505,39 +479,38 @@ function AdhkarTab() {
         </div>
       </div>
 
-      {/* Morning Adhkar */}
-      <Section title="Morning Adhkar">
-        {currentMorning && <AdhkarCard adhkar={currentMorning} index={morningIndex} type="morning" total={morningAdhkar.length} />}
-        <div className="flex justify-center gap-1 mt-4">
-          {morningAdhkar.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => setMorningIndex(index)}
-              className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
-                index === morningIndex ? "bg-[#6B2D3A]" : "bg-[#EAE3DE]"
-              }`}
-            />
-          ))}
-        </div>
-      </Section>
+      {/* Sub-tabs for Morning/Evening */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setAdhkarSubTab("morning")}
+          className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+            adhkarSubTab === "morning"
+              ? "bg-[#6B2D3A] text-white"
+              : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#6B2D3A] hover:text-white"
+          }`}
+        >
+          Morning Adhkar
+        </button>
+        <button
+          type="button"
+          onClick={() => setAdhkarSubTab("evening")}
+          className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+            adhkarSubTab === "evening"
+              ? "bg-[#6B2D3A] text-white"
+              : "bg-[#F2E8EA] text-[#6B2D3A] hover:bg-[#6B2D3A] hover:text-white"
+          }`}
+        >
+          Evening Adhkar
+        </button>
+      </div>
 
-      {/* Evening Adhkar */}
-      <Section title="Evening Adhkar">
-        {currentEvening && <AdhkarCard adhkar={currentEvening} index={eveningIndex} type="evening" total={eveningAdhkar.length} />}
-        <div className="flex justify-center gap-1 mt-4">
-          {eveningAdhkar.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => setEveningIndex(index)}
-              className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
-                index === eveningIndex ? "bg-[#6B2D3A]" : "bg-[#EAE3DE]"
-              }`}
-            />
-          ))}
-        </div>
-      </Section>
+      {/* Current Adhkar List */}
+      <div className="space-y-4">
+        {currentAdhkar.map((adhkar, index) => (
+          <AdhkarCard key={adhkar.id} adhkar={adhkar} index={index} total={currentAdhkar.length} />
+        ))}
+      </div>
     </div>
   );
 }

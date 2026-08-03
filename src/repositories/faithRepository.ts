@@ -84,7 +84,7 @@ export const FaithRepository = {
     syncService.queueSync('memorization', { id, status, lastReviewedAt: today() });
     
     if (status === "memorized" && entry.status !== "memorized") {
-      await logActivity("quran_memorization");
+      await logActivity("quran_memorization", { difficulty: "milestone" as const });
     }
   },
 
@@ -116,20 +116,30 @@ export const FaithRepository = {
       evening: false,
       afterPrayer: false,
       istighfarCount: 0,
+      completedItems: [],
     };
   },
 
-  async toggleAdhkar(date: string, field: "morning" | "evening" | "afterPrayer"): Promise<void> {
+  async toggleAdhkarItem(date: string, categoryId: string, itemId: string): Promise<void> {
     const log = await FaithRepository.getAdhkarLog(date);
-    const nowChecked = !log[field];
+    const itemKey = `${categoryId}_${itemId}`;
+    const completedItems = log.completedItems || [];
+    const nowCompleted = !completedItems.includes(itemKey);
+    
+    let newCompletedItems: string[];
+    if (nowCompleted) {
+      newCompletedItems = [...completedItems, itemKey];
+    } else {
+      newCompletedItems = completedItems.filter((key) => key !== itemKey);
+    }
     
     // Update local Dexie immediately
-    await db.adhkarLogs.put({ ...log, [field]: nowChecked });
+    await db.adhkarLogs.put({ ...log, completedItems: newCompletedItems });
     
     // Queue sync to backend
-    syncService.queueSync('adhkar', { date, [field]: nowChecked });
+    syncService.queueSync('adhkar', { date, completedItems: newCompletedItems });
     
-    if (nowChecked) await logActivity("adhkar_logged", { date });
+    if (nowCompleted) await logActivity("adhkar_logged", { date });
   },
 
   async addIstighfar(date: string, count: number): Promise<void> {

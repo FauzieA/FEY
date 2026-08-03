@@ -21,6 +21,7 @@ export function InlineForm({ title, submitLabel = "Save", children, onSubmit, de
     setSaving(true);
     try {
       await onSubmit();
+      setOpen(false); // Auto-collapse after successful submission
     } finally {
       setSaving(false);
     }

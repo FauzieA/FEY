@@ -41,7 +41,7 @@ export const TrainingRepository = {
         exercise.exerciseName ?? exercise.name ?? exercise.exerciseId,
         topWeight,
       );
-      if (isRecord) await logActivity("personal_record", { date });
+      if (isRecord) await logActivity("personal_record", { date, difficulty: "hard" as const });
     }
 
     // Queue sync to backend

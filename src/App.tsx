@@ -10,15 +10,12 @@ import LibraryPage from "@/pages/LibraryPage";
 import PerfumeryPage from "@/pages/PerfumeryPage";
 import WealthPage from "@/pages/WealthPage";
 import LifePage from "@/pages/LifePage";
-import CharacterHubPage from "@/pages/CharacterHubPage";
-import ProgressPage from "@/pages/ProgressPage";
+import CharacterProgressionPage from "@/pages/CharacterProgressionPage";
 
 /* Original workout tracker screens, preserved in full */
-import WorkoutDashboardPage from "@/pages/DashboardPage";
 import WorkoutPage from "@/pages/WorkoutPage";
 import WeeklySummaryPage from "@/pages/WeeklySummaryPage";
 import EvolutionPage from "@/pages/EvolutionPage";
-import CharacterPage from "@/pages/CharacterPage";
 import DailyPage from "@/pages/DailyPage";
 import WeeklyPage from "@/pages/WeeklyPage";
 import ClassDayPage from "@/pages/ClassDayPage";
@@ -46,19 +43,17 @@ export default function App() {
           <Route path="perfumery" element={<PerfumeryPage />} />
           <Route path="wealth" element={<WealthPage />} />
           <Route path="life" element={<LifePage />} />
-          <Route path="character" element={<CharacterHubPage />} />
-          <Route path="progress" element={<ProgressPage />} />
+          <Route path="character" element={<CharacterProgressionPage />} />
 
           {/* Original workout tracker routes */}
           <Route path="workout/session" element={<WorkoutPage />} />
-          <Route path="workout/dashboard" element={<WorkoutDashboardPage />} />
           <Route path="daily" element={<DailyPage />} />
           <Route path="weekly" element={<WeeklyPage />} />
           <Route path="class-day" element={<ClassDayPage />} />
           <Route path="history" element={<WeeklySummaryPage />} />
           <Route path="weekly-summary" element={<WeeklySummaryPage />} />
           <Route path="evolution" element={<EvolutionPage />} />
-          <Route path="character/training" element={<CharacterPage />} />
+    
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
