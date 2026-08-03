@@ -4,7 +4,6 @@ import {
   FlaskConical,
   Heart,
   LayoutDashboard,
-  LineChart,
   Moon,
   NotebookPen,
   User,
@@ -33,7 +32,6 @@ export const MODULES: ModuleDefinition[] = [
   { id: "wealth", label: "Wealth", path: "/wealth", icon: Wallet, tagline: "Savings, goals, purchase planning" },
   { id: "life", label: "Life", path: "/life", icon: NotebookPen, tagline: "Journal, people, timeline" },
   { id: "character", label: "Character", path: "/character", icon: User, tagline: "Who I am becoming" },
-  { id: "progress", label: "Progress", path: "/progress", icon: LineChart, tagline: "Long-term trends"},
 ];
 
 export const PRIMARY_MODULES = MODULES.filter((module) => module.primary);
