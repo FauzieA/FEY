@@ -39,6 +39,8 @@ export interface XpEvent {
   /** ISO date (YYYY-MM-DD) the activity happened on. */
   date: string;
   createdAt: string;
+  /** Optional local session id this XP is attributed to */
+  sessionId?: string;
 }
 
 export interface AchievementRecord {

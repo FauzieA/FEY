@@ -74,7 +74,6 @@ export interface WorkoutSession {
   completedAt: string; // ISO String timestamp
   durationSeconds?: number; // Optional
   durationMinutes: number;
-  totalVolumeKg: number;
   xpEarned?: number;
   completed?: boolean; // Optional
   exercises: SessionExercise[];

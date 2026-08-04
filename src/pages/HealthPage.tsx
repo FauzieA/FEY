@@ -254,14 +254,28 @@ function SleepTab() {
 
   const hours = calculateHours(form.startTime, form.endTime);
 
+  // Group sleep logs by date for stacked bar chart
+  const groupedSleepData = logs.slice(-14).reduce((acc, log) => {
+    const dateKey = formatShortDate(log.date);
+    if (!acc[dateKey]) {
+      acc[dateKey] = { label: dateKey, value: 0, count: 0 };
+    }
+    acc[dateKey].value += log.hours;
+    acc[dateKey].count += 1;
+    return acc;
+  }, {} as Record<string, { label: string; value: number; count: number }>);
+
+  const chartData = Object.values(groupedSleepData);
+
   return (
     <div className="space-y-6">
       <Section title="Hours slept">
         <TrendChart
-          data={logs.slice(-14).map((entry) => ({ label: formatShortDate(entry.date), value: entry.hours }))}
+          data={chartData}
           kind="bar"
           unit="h"
           emptyLabel="Log a few nights to see your pattern"
+          stacked={true}
         />
       </Section>
 

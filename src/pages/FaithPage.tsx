@@ -16,6 +16,7 @@ import { titleCase } from "@/utils/format";
 import { getRandomPrayerQuote } from "@/data/prayerQuotes";
 import { ADHKAR_DATA, getDailyIstighfarQuote } from "@/data/adhkarData";
 import { SURAH_DATA } from "@/data/surahData";
+import { Trash2 } from "lucide-react";
 
 const TABS = [
   { id: "prayer", label: "Prayer" },
@@ -222,27 +223,41 @@ function QuranTab() {
   const snapshot = useFeySnapshot();
   const [memo, setMemo] = useState({ surah: "", fromAyah: "1", toAyah: "", status: "learning" as MemorizationStatus });
 
-  // Calculate memorization stats based on 114 surahs
+  // Calculate memorization stats based on total Quran verses (6,236)
+  const totalQuranVerses = 6236;
+  const memorizedVerses = snapshot.memorization
+    .filter((m) => m.status === "memorized")
+    .reduce((sum, m) => {
+      const surahInfo = SURAH_DATA.find(s => s.name === m.surah);
+      if (surahInfo) {
+        return sum + (m.toAyah - m.fromAyah + 1);
+      }
+      return sum;
+    }, 0);
+  const overallProgress = Math.round((memorizedVerses / totalQuranVerses) * 100);
+  
   const memorizedSurahs = new Set(snapshot.memorization.filter((m) => m.status === "memorized").map((m) => m.surah)).size;
   const totalSurahs = 114;
-  const surahProgress = Math.round((memorizedSurahs / totalSurahs) * 100);
 
   // Get current surah being memorized
   const currentSurah = snapshot.memorization.find((m) => m.status === "learning" || m.status === "needs-work");
   
-  // Calculate current surah progress
+  // Calculate current surah progress using SURAH_DATA for accurate verse counts
   let currentSurahProgress = 0;
   let currentSurahLabel = "No current surah";
   if (currentSurah) {
-    const totalVersesInSurah = currentSurah.toAyah - currentSurah.fromAyah + 1;
-    const memorizedVersesInSurah = currentSurah.status === "memorized" ? totalVersesInSurah : Math.floor(totalVersesInSurah * 0.5); // Estimate
-    currentSurahProgress = Math.round((memorizedVersesInSurah / totalVersesInSurah) * 100);
-    currentSurahLabel = `${currentSurah.surah} (${currentSurah.fromAyah}–${currentSurah.toAyah})`;
+    const surahInfo = SURAH_DATA.find(s => s.name === currentSurah.surah);
+    if (surahInfo) {
+      const totalVersesInSurah = surahInfo.verses;
+      const memorizedVersesInSurah = currentSurah.status === "memorized" ? totalVersesInSurah : Math.floor(totalVersesInSurah * 0.5); // Estimate for learning
+      currentSurahProgress = Math.round((memorizedVersesInSurah / totalVersesInSurah) * 100);
+      currentSurahLabel = `${currentSurah.surah} (${currentSurah.fromAyah}–${currentSurah.toAyah})`;
+    }
   }
 
-  // Get passages that need revision (not reviewed in last 7 days)
+  // Get passages that need revision (only 'learning' status)
   const dueRevision = [...snapshot.memorization]
-    .filter((entry) => entry.status !== "learning")
+    .filter((entry) => entry.status === "learning")
     .sort((a, b) => (a.lastReviewedAt ?? "").localeCompare(b.lastReviewedAt ?? ""))
     .slice(0, 3);
 
@@ -250,9 +265,9 @@ function QuranTab() {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Surahs memorized" value={`${memorizedSurahs} / ${totalSurahs}`} tone="burgundy" />
-        <StatTile label="Overall progress" value={`${surahProgress}%`} />
+        <StatTile label="Verses memorized" value={`${memorizedVerses} / ${totalQuranVerses}`} />
+        <StatTile label="Overall progress" value={`${overallProgress}%`} />
         <StatTile label="Current surah" value={currentSurah ? currentSurah.surah : "—"} />
-        <StatTile label="Current progress" value={currentSurah ? `${currentSurahProgress}%` : "—"} />
       </div>
 
       {/* Current Surah Progress */}
@@ -350,15 +365,24 @@ function QuranTab() {
                 subtitle={`${versesCount} verses · ${progress}% of surah · Started ${formatDate(entry.startedAt)}${entry.lastReviewedAt ? ` · reviewed ${relativeDay(entry.lastReviewedAt)}` : ""}`}
                 meta={`${entry.status}`}
                 actions={
-                  <Select
-                    value={entry.status}
-                    onChange={(e) => void FaithRepository.setMemorizationStatus(entry.id!, e.target.value as MemorizationStatus)}
-                    className="w-36 py-1 text-xs"
-                  >
-                    <option value="learning">Learning</option>
-                    <option value="needs-work">Needs work</option>
-                    <option value="memorized">Memorized</option>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={entry.status}
+                      onChange={(e) => void FaithRepository.setMemorizationStatus(entry.id!, e.target.value as MemorizationStatus)}
+                      className="w-36 py-1 text-xs"
+                    >
+                      <option value="learning">Learning</option>
+                      <option value="needs-work">Needs work</option>
+                      <option value="memorized">Memorized</option>
+                    </Select>
+                    <button
+                      onClick={() => void FaithRepository.deleteMemorization(entry.id!)}
+                      className="p-2 text-[#8C7B75] hover:text-[#6B2D3A] hover:bg-[#F2E8EA] rounded-lg transition-colors cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 }
               />
             );
@@ -558,11 +582,20 @@ function FastsTab() {
                 subtitle={fast.reason}
                 meta={fast.madeUpOn ? `Made up ${formatDate(fast.madeUpOn)}` : undefined}
                 actions={
-                  !fast.madeUpOn && (
-                    <Button size="sm" variant="rose" onClick={() => void FaithRepository.markFastMadeUp(fast.id!)}>
-                      Mark made up
-                    </Button>
-                  )
+                  <div className="flex items-center gap-2">
+                    {!fast.madeUpOn && (
+                      <Button size="sm" variant="rose" onClick={() => void FaithRepository.markFastMadeUp(fast.id!)}>
+                        Mark made up
+                      </Button>
+                    )}
+                    <button
+                      onClick={() => void FaithRepository.deleteMissedFast(fast.id!)}
+                      className="p-2 text-[#8C7B75] hover:text-[#6B2D3A] hover:bg-[#F2E8EA] rounded-lg transition-colors cursor-pointer"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 }
               />
             ))}

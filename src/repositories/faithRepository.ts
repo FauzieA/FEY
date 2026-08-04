@@ -43,12 +43,17 @@ export const FaithRepository = {
   async togglePrayer(date: string, prayer: PrayerName): Promise<void> {
     const log = await FaithRepository.getPrayerLog(date);
     const nowChecked = !log.prayers[prayer];
+    const nextPrayers = { ...log.prayers, [prayer]: nowChecked };
     
     // Update local Dexie immediately
-    await db.prayerLogs.put({ ...log, prayers: { ...log.prayers, [prayer]: nowChecked } });
+    await db.prayerLogs.put({ ...log, prayers: nextPrayers });
     
-    // Queue sync to backend
-    syncService.queueSync('prayer', { date, [prayer]: nowChecked ? 'on_time' : 'missed' });
+    // Queue sync to backend with the full prayer payload expected by the API
+    const prayerPayload = PRAYER_NAMES.reduce((acc, prayerName) => {
+      acc[prayerName] = nextPrayers[prayerName] ? 'on_time' : 'missed';
+      return acc;
+    }, {} as Record<PrayerName, 'on_time' | 'missed'>);
+    syncService.queueSync('prayer', { date, ...prayerPayload });
     
     if (nowChecked) await logActivity("prayer_logged", { date });
   },
@@ -168,5 +173,29 @@ export const FaithRepository = {
     syncService.queueSync('missed_fast', { id, madeUpOn: date });
     
     await logActivity("fast_made_up", { date });
+  },
+
+  async deleteMissedFast(id: number): Promise<void> {
+    // Delete from local Dexie immediately
+    await db.missedFasts.delete(id);
+    
+    // Queue sync to backend
+    syncService.queueSync('delete_missed_fast', id);
+  },
+
+  async deleteMemorization(id: number): Promise<void> {
+    // Delete from local Dexie immediately
+    await db.memorization.delete(id);
+    
+    // Queue sync to backend
+    syncService.queueSync('delete_memorization', id);
+  },
+
+  async deleteAdhkarLog(date: string): Promise<void> {
+    // Delete from local Dexie immediately
+    await db.adhkarLogs.delete(date);
+    
+    // Queue sync to backend
+    syncService.queueSync('delete_adhkar_log', date);
   },
 };

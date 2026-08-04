@@ -25,6 +25,8 @@ class SyncService {
     // Process any pending queue immediately on load if online
     if (this.isOnline && this.queue.length > 0) {
       this.processQueue();
+      // Also refresh remote data after attempting to push local changes
+      this.syncAll();
     }
   }
 
@@ -86,12 +88,12 @@ class SyncService {
       clearTimeout(this.immediateSyncTimeout);
     }
     
-    // Small delay to batch rapid operations, but sync quickly
+    // Longer delay to batch operations and reduce sync frequency
     this.immediateSyncTimeout = setTimeout(() => {
       if (!this.isSyncing) {
         this.processQueue();
       }
-    }, 100);
+    }, 2000); // 2 seconds instead of 100ms
   }
 
   private async processQueue() {
@@ -132,6 +134,14 @@ class SyncService {
         }
       }
     } finally {
+      // After pushing local operations, refresh from backend to ensure local DB
+      // contains the authoritative records (helps cross-device consistency).
+      try {
+        if (this.isOnline) await this.syncAll();
+      } catch (err) {
+        console.error('Failed to refresh after queue processing:', err);
+      }
+
       this.isSyncing = false;
       console.log('Sync queue processing complete');
     }
@@ -276,6 +286,17 @@ class SyncService {
   private async syncXpItem(action: string, data: any) {
     if (action === 'create') {
       await api.post('/xp-events/', data);
+    } else if (action === 'delete' && data && data.sessionId) {
+      // Delete all XP events on the backend that are attributed to this sessionId
+      const events = await api.get<any[]>('/xp-events/').catch(() => []);
+      const toDelete = events.filter((e) => e.sessionId === data.sessionId);
+      for (const ev of toDelete) {
+        try {
+          await api.delete(`/xp-events/${ev.id}/`);
+        } catch (err) {
+          console.error('Failed to delete xp-event on backend:', ev.id, err);
+        }
+      }
     }
   }
 
@@ -456,6 +477,28 @@ class SyncService {
     }
   }
 
+  private async syncDeleteMissedFastItem(action: string, data: any) {
+    if (action === 'delete') {
+      await api.delete(`/missed-fasts/${data}/`);
+    }
+  }
+
+  private async syncDeleteMemorizationItem(action: string, data: any) {
+    if (action === 'delete') {
+      await api.delete(`/memorization-entries/${data}/`);
+    }
+  }
+
+  private async syncDeleteAdhkarLogItem(action: string, data: any) {
+    if (action === 'delete') {
+      const logs = await api.get<any[]>('/adhkar/').catch(() => []);
+      const existing = logs.find((l: any) => l.date === data);
+      if (existing) {
+        await api.delete(`/adhkar/${existing.id}/`);
+      }
+    }
+  }
+
   async syncProfile() {
     if (!this.isOnline) return;
     
@@ -549,7 +592,7 @@ class SyncService {
         this.syncAll();
         this.processQueue();
       }
-    }, 10000);
+    }, 10000); // 10000ms = 10 seconds
   }
 
   stopAutoSync() {

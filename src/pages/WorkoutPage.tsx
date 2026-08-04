@@ -244,7 +244,6 @@ export default function WorkoutPage() {
         planTitle: exercise.name,
         completedAt: new Date().toISOString(),
         durationMinutes: 5,
-        totalVolumeKg: totalVolume,
         xpEarned: 100,
         exercises: [
           {

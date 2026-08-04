@@ -27,7 +27,16 @@ export function computeMetrics(snapshot: FeySnapshot): CharacterMetrics {
   return {
     ...EMPTY_METRICS,
     workouts: snapshot.sessions.length,
-    trainingVolumeKg: Math.round(snapshot.sessions.reduce((sum, s) => sum + (s.totalVolumeKg ?? 0), 0)),
+    trainingVolumeKg: Math.round(
+      snapshot.sessions.reduce((sum, s) => sum + (s.exercises ?? []).reduce(
+        (exerciseSum, exercise) => exerciseSum + (exercise.sets ?? []).reduce(
+          (setSum, set) => setSum + ((set.weightKg ?? set.weight ?? 0) * (set.reps ?? 0)),
+          0,
+        ),
+        0,
+      ),
+      0),
+    ),
     personalRecords: snapshot.xpEvents.filter((e) => e.activity === "personal_record").length,
     prayersLogged,
     completePrayerDays,
@@ -313,13 +322,26 @@ export function moduleSummaries(snapshot: FeySnapshot): ModuleSummary[] {
     (reminder) => !reminder.completedAt && reminder.dueDate <= today(),
   ).length;
 
+  const sessionVolumeTotal = snapshot.sessions.reduce(
+    (sessionSum, session) =>
+      sessionSum + (session.exercises ?? []).reduce(
+        (exerciseSum, exercise) =>
+          exerciseSum + (exercise.sets ?? []).reduce(
+            (setSum, set) => setSum + ((set.weightKg ?? set.weight ?? 0) * (set.reps ?? 0)),
+            0,
+          ),
+        0,
+      ),
+    0,
+  );
+
   return [
     {
       id: "training",
       label: "Training",
       path: "/training",
       headline: `${workoutsThisWeek} session${workoutsThisWeek === 1 ? "" : "s"} this week`,
-      detail: `${formatNumber(snapshot.sessions.reduce((sum, s) => sum + (s.totalVolumeKg ?? 0), 0))} kg lifted all-time`,
+      detail: `${formatNumber(sessionVolumeTotal)} kg lifted all-time`,
       progress: percent(workoutsThisWeek, 5),
     },
     {

@@ -30,8 +30,8 @@ export const TrainingRepository = {
       0,
     );
 
-    await logActivity("workout_session", { date });
-    if (completedSets > 0) await logActivity("workout_set", { multiplier: completedSets, date });
+    await logActivity("workout_session", { date, sessionId: session.id });
+    if (completedSets > 0) await logActivity("workout_set", { multiplier: completedSets, date, sessionId: session.id });
 
     for (const exercise of session.exercises) {
       const topWeight = Math.max(0, ...(exercise.sets ?? []).map((set) => set.weightKg ?? set.weight ?? 0));
@@ -41,7 +41,7 @@ export const TrainingRepository = {
         exercise.exerciseName ?? exercise.name ?? exercise.exerciseId,
         topWeight,
       );
-      if (isRecord) await logActivity("personal_record", { date, difficulty: "hard" as const });
+      if (isRecord) await logActivity("personal_record", { date, difficulty: "hard" as const, sessionId: session.id });
     }
 
     // Queue sync to backend (explicitly mark as create so the sync service posts it)

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/dexie";
+import { syncService } from "@/services/syncService";
 
 import { EXERCISE_DATABASE, type ExerciseDefinition } from "@/db/workoutData";
 import {
@@ -71,6 +72,18 @@ export default function DailyPage() {
     });
 
     if (targetSession?.id) {
+      // Remove XP events associated with this workout session (local) and queue backend deletion
+      try {
+        // Delete local xp events by sessionId
+        await db.xpEvents.where('sessionId').equals(targetSession.id).delete();
+
+        // Queue deletion on backend so server state stays consistent
+        // syncService will handle locating and deleting matching xp events server-side
+        syncService.queueSync('xp', { sessionId: targetSession.id }, 'delete');
+      } catch (err) {
+        console.error('Failed to remove xp events for undone workout', err);
+      }
+
       await db.sessions.delete(targetSession.id);
     }
   };

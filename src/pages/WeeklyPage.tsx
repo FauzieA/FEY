@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/dexie";
 import { EXERCISE_DATABASE, WEEKLY_CATEGORIES } from "@/db/workoutData";
+import { toISODate, startOfWeek } from "@/utils/date";
 import {
   ChevronLeft,
   CheckCircle2,
@@ -23,12 +24,17 @@ export default function WeeklyPage() {
   // Calculate completion counts per exercise ID
   const exerciseCompletionCounts: Record<string, number> = {};
   sessions.forEach((s) => {
-    s.exercises?.forEach((ex: any) => {
-      if (ex.exerciseId) {
-        exerciseCompletionCounts[ex.exerciseId] =
-          (exerciseCompletionCounts[ex.exerciseId] || 0) + 1;
-      }
-    });
+    // Only count sessions that occurred in the current week
+    const sessionDateIso = toISODate(s.completedAt ?? s.startedAt ?? new Date());
+    const weekStart = startOfWeek();
+    if (sessionDateIso >= weekStart) {
+      s.exercises?.forEach((ex: any) => {
+        if (ex.exerciseId) {
+          exerciseCompletionCounts[ex.exerciseId] =
+            (exerciseCompletionCounts[ex.exerciseId] || 0) + 1;
+        }
+      });
+    }
   });
 
   // 🗑️ UNDO FUNCTION: Deletes the most recent session for this specific exercise

@@ -91,7 +91,7 @@ export type ActivityId = keyof typeof ACTIVITY_KEY_MAP;
 /** Records an XP event for an activity using the new calculation system. */
 export async function logActivity(
   activity: ActivityId,
-  options: { multiplier?: number; date?: string; difficulty?: Difficulty } = {},
+  options: { multiplier?: number; date?: string; difficulty?: Difficulty; sessionId?: string } = {},
 ): Promise<number> {
   const activityKey = ACTIVITY_KEY_MAP[activity] || activity;
   const module = ACTIVITY_MODULE_MAP[activity] || "life";
@@ -117,6 +117,7 @@ export async function logActivity(
       amount,
       date,
       createdAt: new Date().toISOString(),
+      ...(options.sessionId ? { sessionId: options.sessionId } : {}),
     };
 
     // Save to local Dexie immediately

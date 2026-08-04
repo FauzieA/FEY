@@ -1,105 +1,94 @@
-### FEY API Endpoints
-### Base URL: https://fey-backend-g4dz.onrender.com/api
-### Organized by Page/Module
 
-###############################################################################
-# AUTHENTICATION
-###############################################################################
+@API_BASE_URL = https://fey-backend-g4dz.onrender.com/api
 
-### Login
-POST {{API_BASE_URL}}/token/
+
+### Baseline workout and health data examples
+
+### Create Baseline Hip Thrust Workout
+POST {{API_BASE_URL}}/workouts/
 Content-Type: application/json
 
 {
-  "username": "string",
-  "password": "string"
+  "plan_id": "baseline",
+  "plan_title": "Hip Thrust Baseline",
+  "started_at": "2026-07-20T18:00:00Z",
+  "completed_at": "2026-07-20T18:20:00Z",
+  "duration_minutes": 20,
+  "total_sets_completed": 3,
+  "total_reps_completed": 30,
+  "average_rpe": 4,
+  "xp_earned": 50,
+  "completed": true,
+  "exercises": [
+    {
+      "exercise_id": "hip_thrust",
+      "exercise_name": "Hip Thrust",
+      "category": "Lower Body",
+      "primary_muscle": "Glutes",
+      "notes": "Baseline weight",
+      "sets": [
+        { "set_num": 1, "reps": 10, "weight_kg": 10, "duration_sec": 0, "set_type": "working", "completed": true },
+        { "set_num": 2, "reps": 10, "weight_kg": 10, "duration_sec": 0, "set_type": "working", "completed": true },
+        { "set_num": 3, "reps": 10, "weight_kg": 10, "duration_sec": 0, "set_type": "working", "completed": true }
+      ]
+    }
+  ]
 }
 
-### Refresh Token
-POST {{API_BASE_URL}}/token/refresh/
+### Create Yesterday's Gym Workout
+POST {{API_BASE_URL}}/workouts/
 Content-Type: application/json
 
 {
-  "refresh": "string"
+  "plan_id": "gym_2026_08_03",
+  "plan_title": "Gym Session",
+  "started_at": "2026-08-03T16:00:00Z",
+  "completed_at": "2026-08-03T17:15:00Z",
+  "duration_minutes": 75,
+  "total_sets_completed": 8,
+  "total_reps_completed": 72,
+  "average_rpe": 6,
+  "xp_earned": 80,
+  "completed": true,
+  "exercises": [
+    {
+      "exercise_id": "hip_thrust",
+      "exercise_name": "Hip Thrust",
+      "category": "Lower Body",
+      "primary_muscle": "Glutes",
+      "notes": "Gym follow-up",
+      "sets": [
+        { "set_num": 1, "reps": 10, "weight_kg": 20, "duration_sec": 0, "set_type": "working", "completed": true },
+        { "set_num": 2, "reps": 10, "weight_kg": 20, "duration_sec": 0, "set_type": "working", "completed": true }
+      ]
+    }
+  ]
 }
 
-###############################################################################
-# CHARACTER / PROFILE (HomeDashboardPage, CharacterPage)
-###############################################################################
-
-### Get Profile
-GET {{API_BASE_URL}}/profile/
-Authorization: Bearer {{access_token}}
-
-### Create Profile
-POST {{API_BASE_URL}}/profile/
-Authorization: Bearer {{access_token}}
+### Create Baseline Weight Log
+POST {{API_BASE_URL}}/weight-logs/
 Content-Type: application/json
 
 {
-  "id": "string",
-  "level": 1,
-  "current_xp": 0,
-  "next_level_xp": 1000,
-  "current_streak": 0,
-  "last_workout_date": null,
-  "attributes": {
-    "STR": 10,
-    "END": 10,
-    "VOL": 10,
-    "CON": 10
-  }
+  "date": "2026-07-20",
+  "weight_kg": 70.5,
+  "notes": "Baseline bodyweight"
 }
 
-### Update Profile
-PUT {{API_BASE_URL}}/profile/{{profile_id}}/
-Authorization: Bearer {{access_token}}
+### Create Baseline Measurement Log
+POST {{API_BASE_URL}}/measurements/
 Content-Type: application/json
 
 {
-  "level": 1,
-  "current_xp": 0,
-  "next_level_xp": 1000,
-  "current_streak": 0,
-  "last_workout_date": null,
-  "attributes": {
-    "STR": 10,
-    "END": 10,
-    "VOL": 10,
-    "CON": 10
-  }
+  "date": "2026-07-20",
+  "waist_cm": 85,
+  "hips_cm": 100,
+  "chest_cm": 95,
+  "thigh_cm": 58,
+  "arm_cm": 30,
+  "notes": "Baseline body measurements"
 }
 
-###############################################################################
-# SETTINGS (App-wide)
-###############################################################################
-
-### Get Settings
-GET {{API_BASE_URL}}/settings/
-Authorization: Bearer {{access_token}}
-
-### Create Settings
-POST {{API_BASE_URL}}/settings/
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-  "id": "string",
-  "default_rest_seconds": 90,
-  "sound_enabled": true,
-  "vibration_enabled": true
-}
-
-### Update Settings
-PUT {{API_BASE_URL}}/settings/{{settings_id}}/
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-  "default_rest_seconds": 90,
-  "sound_enabled": true,
-  "vibration_enabled": true
-}
 
 ###############################################################################
 # FAITH / ISLAM (FaithPage)
@@ -107,11 +96,9 @@ Content-Type: application/json
 
 ### Get Prayer Logs
 GET {{API_BASE_URL}}/salah/
-Authorization: Bearer {{access_token}}
 
 ### Create Prayer Log
 POST {{API_BASE_URL}}/salah/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
@@ -124,8 +111,8 @@ Content-Type: application/json
 }
 
 ### Update Prayer Log
-PATCH {{API_BASE_URL}}/salah/{{prayer_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the prayer id you want to update
+PATCH {{API_BASE_URL}}/salah/1/
 Content-Type: application/json
 
 {
@@ -139,36 +126,34 @@ Content-Type: application/json
 
 ### Create Quran Reading Log
 POST {{API_BASE_URL}}/quran-reading/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "surah": "string",
+  "date": "2026-08-04",
+  "surah": "Al-Fatiha",
   "from_ayah": 1,
-  "to_ayah": 10,
-  "pages": 5,
-  "minutes": 30,
-  "reflection": "string"
+  "to_ayah": 7,
+  "pages": 1,
+  "minutes": 15,
+  "reflection": "Started the day with focus"
 }
 
 ### Create Memorization Entry
 POST {{API_BASE_URL}}/memorization-entries/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "surah": "string",
+  "surah": "Al-Mulk",
   "from_ayah": 1,
   "to_ayah": 10,
-  "status": "learning|memorized|needs-work",
-  "started_at": "YYYY-MM-DD",
-  "last_reviewed_at": "YYYY-MM-DD"
+  "status": "learning",
+  "started_at": "2026-08-04T10:00:00Z",
+  "last_reviewed_at": "2026-08-04T10:00:00Z"
 }
 
 ### Update Memorization Entry
-PATCH {{API_BASE_URL}}/memorization-entries/{{memorization_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the memorization entry id you want to update
+PATCH {{API_BASE_URL}}/memorization-entries/1/
 Content-Type: application/json
 
 {
@@ -178,37 +163,34 @@ Content-Type: application/json
 
 ### Create Revision Log
 POST {{API_BASE_URL}}/revisions/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "surah": "string",
+  "date": "2026-08-04",
+  "surah": "Al-Mulk",
   "quality": 5,
-  "notes": "string"
+  "notes": "Recalled the opening verses clearly"
 }
 
 ### Get Adhkar Logs
 GET {{API_BASE_URL}}/adhkar/
-Authorization: Bearer {{access_token}}
 
 ### Create Adhkar Log
 POST {{API_BASE_URL}}/adhkar/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "morning": false,
+  "date": "2026-08-04",
+  "morning": true,
   "evening": false,
-  "after_prayer": false,
-  "istighfar_count": 0,
-  "completed_items": ["morning_item1", "evening_item2"]
+  "after_prayer": true,
+  "istighfar_count": 3,
+  "completed_items": ["morning_1", "after_prayer_1"]
 }
 
 ### Update Adhkar Log
-PATCH {{API_BASE_URL}}/adhkar/{{adhkar_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the adhkar log id you want to update
+PATCH {{API_BASE_URL}}/adhkar/1/
 Content-Type: application/json
 
 {
@@ -222,18 +204,17 @@ Content-Type: application/json
 
 ### Create Missed Fast
 POST {{API_BASE_URL}}/missed-fasts/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "missed_on": "YYYY-MM-DD",
-  "reason": "string",
+  "missed_on": "2026-08-03",
+  "reason": "Travel",
   "made_up_on": null
 }
 
 ### Update Missed Fast
-PATCH {{API_BASE_URL}}/missed-fasts/{{fast_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the missed fast id you want to update
+PATCH {{API_BASE_URL}}/missed-fasts/1/
 Content-Type: application/json
 
 {
@@ -248,25 +229,42 @@ Content-Type: application/json
 
 ### Get Workout Sessions
 GET {{API_BASE_URL}}/workouts/
-Authorization: Bearer {{access_token}}
 
 ### Create Workout Session
 POST {{API_BASE_URL}}/workouts/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "category": "string",
+  "plan_id": "test",
+  "plan_title": "Test Workout",
+  "started_at": "2026-08-04T12:00:00Z",
+  "completed_at": "2026-08-04T12:00:00Z",
+  "duration_seconds": 3600,
   "duration_minutes": 60,
+  "total_sets_completed": 1,
+  "total_reps_completed": 10,
+  "average_rpe": 0,
+  "session_rating": null,
+  "xp_earned": 0,
+  "completed": true,
   "exercises": [
     {
-      "exercise_id": "string",
-      "exercise_name": "string",
+      "exercise_id": "bench_press",
+      "exercise_name": "Bench Press",
+      "category": null,
+      "primary_muscle": null,
+      "notes": null,
       "sets": [
         {
+          "set_num": 1,
           "reps": 10,
-          "weight_kg": 20
+          "weight_kg": 20,
+          "duration_sec": 0,
+          "set_type": "working",
+          "rpe": null,
+          "estimated_1rm": 0,
+          "rest_seconds_after": 0,
+          "completed": true
         }
       ]
     }
@@ -275,14 +273,13 @@ Content-Type: application/json
 
 ### Create Personal Record
 POST {{API_BASE_URL}}/personal-records/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "exercise_id": "string",
-  "weight_kg": 100,
+  "exercise_id": "bench_press",
+  "weight": 100,
   "reps": 5,
-  "date": "YYYY-MM-DD"
+  "date": "2026-08-04"
 }
 
 ###############################################################################
@@ -291,20 +288,18 @@ Content-Type: application/json
 
 ### Get XP Events
 GET {{API_BASE_URL}}/xp-events/
-Authorization: Bearer {{access_token}}
 
 ### Create XP Event
 POST {{API_BASE_URL}}/xp-events/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "module": "training|faith|health|library|perfumery|wealth|life",
-  "activity": "string",
+  "module": "training",
+  "activity": "workout_session",
   "amount": 50,
-  "attribute": "discipline|devotion|strength|vitality|knowledge|craft|stewardship|connection",
-  "date": "YYYY-MM-DD",
-  "created_at": "YYYY-MM-DDTHH:mm:ss"
+  "attribute": "discipline",
+  "date": "2026-08-04",
+  "created_at": "2026-08-04T12:00:00"
 }
 
 ###############################################################################
@@ -313,63 +308,56 @@ Content-Type: application/json
 
 ### Create Weight Log
 POST {{API_BASE_URL}}/weight-logs/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
+  "date": "2026-08-04",
   "weight_kg": 70.5,
-  "notes": "string"
+  "notes": "Morning weigh-in"
 }
 
 ### Create Measurement Log
 POST {{API_BASE_URL}}/measurements/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
+  "date": "2026-08-04",
   "waist_cm": 80,
   "hips_cm": 100,
   "chest_cm": 95,
   "thigh_cm": 60,
   "arm_cm": 30,
-  "notes": "string"
+  "notes": "Weekly check-in"
 }
 
 ### Create Sleep Log
 POST {{API_BASE_URL}}/sleep-logs/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "start_time": "22:00",
-  "end_time": "07:00",
-  "hours": 9,
+  "date": "2026-08-04",
+  "hours": 7.5,
   "quality": 5,
-  "notes": "string"
+  "notes": "Restful night"
 }
 
 ### Get Cycle Logs
 GET {{API_BASE_URL}}/cycle-logs/
-Authorization: Bearer {{access_token}}
 
 ### Create Cycle Log
 POST {{API_BASE_URL}}/cycle-logs/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "start_date": "YYYY-MM-DD",
+  "start_date": "2026-08-01",
   "end_date": null,
-  "symptoms": "string",
+  "symptoms": "Mild cramps",
   "flow": 3
 }
 
 ### Update Cycle Log
-PATCH {{API_BASE_URL}}/cycle-logs/{{cycle_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the cycle log id you want to update
+PATCH {{API_BASE_URL}}/cycle-logs/1/
 Content-Type: application/json
 
 {
@@ -377,19 +365,18 @@ Content-Type: application/json
 }
 
 ### Delete Cycle Log
-DELETE {{API_BASE_URL}}/cycle-logs/{{cycle_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the cycle log id you want to delete
+DELETE {{API_BASE_URL}}/cycle-logs/1/
 
 ### Create Health Note
 POST {{API_BASE_URL}}/health-notes/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "category": "symptom|appointment|medication|general",
-  "title": "string",
-  "details": "string"
+  "date": "2026-08-04",
+  "category": "general",
+  "title": "Hydration reminder",
+  "details": "Drink more water today"
 }
 
 ###############################################################################
@@ -398,29 +385,25 @@ Content-Type: application/json
 
 ### Create Book
 POST {{API_BASE_URL}}/books/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "title": "string",
-  "author": "string",
-  "total_pages": 300,
-  "current_page": 1,
-  "status": "reading|finished|waiting",
-  "started_at": "YYYY-MM-DD",
+  "title": "Atomic Habits",
+  "author": "James Clear",
+  "total_pages": 320,
+  "current_page": 42,
+  "status": "reading",
+  "started_at": "2026-08-01",
   "finished_at": null,
   "rating": 5,
-  "notes": "string",
-  "series_name": "string",
-  "sequel_to": "string",
-  "expected_release_date": "YYYY-MM-DD",
-  "quotes": ["string"],
-  "footnotes": ["string"]
+  "notes": "Great practical guidance",
+  "series_name": "",
+  "expected_release_date": null
 }
 
 ### Update Book
-PATCH {{API_BASE_URL}}/books/{{book_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the book id you want to update
+PATCH {{API_BASE_URL}}/books/1/
 Content-Type: application/json
 
 {
@@ -433,12 +416,11 @@ Content-Type: application/json
 
 ### Create Reading Session
 POST {{API_BASE_URL}}/reading-sessions/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "book_id": 1,
-  "date": "YYYY-MM-DD",
+  "book": 1,
+  "date": "2026-08-04",
   "pages_read": 20,
   "minutes": 30
 }
@@ -449,19 +431,18 @@ Content-Type: application/json
 
 ### Create Perfume Formula
 POST {{API_BASE_URL}}/perfume-formulas/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "name": "string",
-  "inspiration": "string",
-  "created_at": "YYYY-MM-DD",
+  "name": "Morning Breeze",
+  "inspiration": "Fresh citrus and clean woods",
+  "created_at": "2026-08-04",
   "archived": false
 }
 
 ### Update Perfume Formula
-PATCH {{API_BASE_URL}}/perfume-formulas/{{formula_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the perfume formula id you want to update
+PATCH {{API_BASE_URL}}/perfume-formulas/1/
 Content-Type: application/json
 
 {
@@ -472,24 +453,21 @@ Content-Type: application/json
 
 ### Create Perfume Version
 POST {{API_BASE_URL}}/perfume-versions/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "formula_id": 1,
+  "formula": 1,
   "version": "v1",
-  "date": "YYYY-MM-DD",
-  "unit": "drops|g|ml",
+  "date": "2026-08-04",
+  "unit": "drops",
   "ingredients": [
     {
-      "name": "string",
-      "note": "top|heart|base",
-      "amount": 10,
-      "dilution": 100
+      "name": "Bergamot",
+      "note": "top",
+      "amount": 10
     }
   ],
-  "alcohol_amount": 50,
-  "observations": "string",
+  "observations": "Bright opening",
   "rating": 5
 }
 
@@ -499,34 +477,30 @@ Content-Type: application/json
 
 ### Create Savings Entry
 POST {{API_BASE_URL}}/savings-entries/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
+  "date": "2026-08-04",
   "amount": 1000,
-  "goal_id": null,
-  "note": "string",
-  "currency": "USD",
-  "location": "account|e-wallet|cash|investment"
+  "goal": null,
+  "note": "Emergency fund transfer"
 }
 
 ### Create Savings Goal
 POST {{API_BASE_URL}}/savings-goals/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "name": "string",
+  "name": "Emergency Fund",
   "target_amount": 10000,
-  "target_date": "YYYY-MM-DD",
-  "created_at": "YYYY-MM-DD",
+  "target_date": "2026-12-31",
+  "created_at": "2026-08-04",
   "completed_at": null
 }
 
 ### Update Savings Goal
-PATCH {{API_BASE_URL}}/savings-goals/{{goal_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the savings goal id you want to update
+PATCH {{API_BASE_URL}}/savings-goals/1/
 Content-Type: application/json
 
 {
@@ -538,21 +512,20 @@ Content-Type: application/json
 
 ### Create Purchase Plan
 POST {{API_BASE_URL}}/purchase-plans/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "name": "string",
+  "name": "Laptop Stand",
   "price": 500,
-  "priority": "low|medium|high",
-  "created_at": "YYYY-MM-DD",
+  "priority": "medium",
+  "created_at": "2026-08-04",
   "purchased_at": null,
-  "notes": "string"
+  "notes": "Ergonomic upgrade"
 }
 
 ### Update Purchase Plan
-PATCH {{API_BASE_URL}}/purchase-plans/{{plan_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the purchase plan id you want to update
+PATCH {{API_BASE_URL}}/purchase-plans/1/
 Content-Type: application/json
 
 {
@@ -565,23 +538,20 @@ Content-Type: application/json
 
 ### Get Wealth Profile
 GET {{API_BASE_URL}}/wealth-profile/
-Authorization: Bearer {{access_token}}
 
 ### Create Wealth Profile
 POST {{API_BASE_URL}}/wealth-profile/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "id": "string",
   "currency": "USD",
   "hourly_rate": 50,
   "monthly_savings_target": 5000
 }
 
 ### Update Wealth Profile
-PUT {{API_BASE_URL}}/wealth-profile/{{profile_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the wealth profile id you want to update
+PUT {{API_BASE_URL}}/wealth-profile/1/
 Content-Type: application/json
 
 {
@@ -596,45 +566,42 @@ Content-Type: application/json
 
 ### Create Journal Entry
 POST {{API_BASE_URL}}/journal-entries/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "title": "string",
-  "body": "string",
+  "date": "2026-08-04",
+  "title": "A productive day",
+  "body": "Kept pace with my routines and stayed focused.",
   "mood": 5,
-  "gratitude": "string"
+  "gratitude": "Health and calm"
 }
 
 ### Create Person
 POST {{API_BASE_URL}}/people/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "name": "string",
-  "relationship": "string",
+  "name": "Aisha",
+  "relationship": "Friend",
   "cadence_days": 7,
   "last_contacted_at": null,
-  "notes": "string"
+  "notes": "Check in this week"
 }
 
 ### Create Call Reminder
 POST {{API_BASE_URL}}/call-reminders/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "person_id": 1,
-  "due_date": "YYYY-MM-DD",
+  "person": 1,
+  "due_date": "2026-08-06",
   "completed_at": null,
-  "note": "string"
+  "note": "Call about the weekend plan"
 }
 
 ### Update Call Reminder
-PATCH {{API_BASE_URL}}/call-reminders/{{reminder_id}}/
-Authorization: Bearer {{access_token}}
+# Replace 1 with the call reminder id you want to update
+PATCH {{API_BASE_URL}}/call-reminders/1/
 Content-Type: application/json
 
 {
@@ -646,12 +613,11 @@ Content-Type: application/json
 
 ### Create Timeline Event
 POST {{API_BASE_URL}}/timeline-events/
-Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 {
-  "date": "YYYY-MM-DD",
-  "title": "string",
-  "category": "milestone|memory|decision|travel|other",
-  "description": "string"
+  "date": "2026-08-04",
+  "title": "Completed the first week",
+  "category": "milestone",
+  "description": "Finished the first full week of routines"
 }

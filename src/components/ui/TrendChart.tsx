@@ -13,11 +13,13 @@ interface TrendChartProps {
   emptyLabel?: string;
   /** Unit suffix shown in the tooltip. */
   unit?: string;
+  /** Whether to stack bars for same-day data */
+  stacked?: boolean;
 }
 
 const axisStyle = { fontSize: 10, fill: "#8C7B75" } as const;
 
-export function TrendChart({ data, kind = "line", height = 200, emptyLabel = "Not enough data yet", unit = "" }: TrendChartProps) {
+export function TrendChart({ data, kind = "line", height = 200, emptyLabel = "Not enough data yet", unit = "", stacked = false }: TrendChartProps) {
   if (data.length === 0) return <EmptyState title={emptyLabel} />;
 
   const shared = (
@@ -43,7 +45,7 @@ export function TrendChart({ data, kind = "line", height = 200, emptyLabel = "No
         {kind === "bar" ? (
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             {shared}
-            <Bar dataKey="value" fill="#6B2D3A" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="value" fill="#6B2D3A" radius={[6, 6, 0, 0]} stackId={stacked ? "sleep" : undefined} />
           </BarChart>
         ) : kind === "area" ? (
           <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>

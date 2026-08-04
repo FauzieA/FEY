@@ -161,7 +161,7 @@ function LogTab() {
             planTitle: exercise.name,
             completedAt: new Date(`${form.date}T12:00:00`).toISOString(),
             durationMinutes: Number(form.durationMinutes) || 0,
-            totalVolumeKg: setCount * reps * weightKg,
+            completed: true,
             exercises: [
               {
                 exerciseId: exercise.id,
@@ -337,3 +337,4 @@ function EvolutionTab() {
     </div>
   );
 }
+ 

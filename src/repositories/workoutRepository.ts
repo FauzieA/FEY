@@ -47,16 +47,18 @@ export class WorkoutRepository {
       .first();
 
     if (!existingPr || weightKg > existingPr.weight) {
+      const today = toISODate(new Date());
+
       if (existingPr && existingPr.id !== undefined) {
         await db.personalRecords.update(existingPr.id, {
           weight: weightKg,
-          date: new Date().toISOString(),
+          date: today,
         });
       } else {
         await db.personalRecords.add({
           exerciseId,
           weight: weightKg,
-          date: new Date().toISOString(),
+          date: today,
         });
       }
       
@@ -64,7 +66,7 @@ export class WorkoutRepository {
       const prPayload = {
         exerciseId,
         weight: weightKg,
-        date: new Date().toISOString(),
+        date: today,
       } as const;
 
       if (existingPr && existingPr.id !== undefined) {
