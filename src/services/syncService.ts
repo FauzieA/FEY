@@ -96,7 +96,7 @@ class SyncService {
     }, 2000); // 2 seconds instead of 100ms
   }
 
-  private async processQueue() {
+  public async processQueue() {
     if (this.isSyncing || !this.isOnline || this.queue.length === 0) {
       return;
     }
@@ -237,6 +237,15 @@ class SyncService {
         break;
       case 'delete_cycle':
         await this.syncDeleteCycleItem(action, data);
+        break;
+      case 'delete_missed_fast':
+        await this.syncDeleteMissedFastItem(action, data);
+        break;
+      case 'delete_memorization':
+        await this.syncDeleteMemorizationItem(action, data);
+        break;
+      case 'delete_adhkar_log':
+        await this.syncDeleteAdhkarLogItem(action, data);
         break;
       default:
         console.warn(`Unknown sync type: ${type}`);

@@ -1,5 +1,6 @@
 import { db } from '@/db/dexie';
 import { syncService } from '@/services/syncService';
+import { toISODate } from '@/utils/date';
 import type { WorkoutPlan, WorkoutSession, PersonalRecord } from '@/db/dexie';
 
 export class WorkoutRepository {

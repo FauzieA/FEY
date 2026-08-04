@@ -232,10 +232,6 @@ export default function WorkoutPage() {
 
   const handleFinishSession = async () => {
     try {
-      const totalVolume = sets.reduce(
-        (acc, s) => acc + (s.completed ? s.weightKg * s.reps : 0),
-        0
-      );
       const dateKey = new Date().toISOString().slice(0, 10);
       const sessionId = `session_${exercise.id}_${dateKey}`;
 
