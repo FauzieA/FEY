@@ -59,7 +59,7 @@ export default function SetsTable({
               )}
 
               <div
-                className={`flex flex-col gap-3 sm:flex-row sm:items-center justify-between p-3 rounded-2xl border transition-all ${
+                className={`flex flex-row flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border transition-all ${
                   st.completed
                     ? "bg-[#F2E8EA]/60 border-[#6B2D3A] text-[#1A1817]"
                     : isTimerRunning
@@ -67,7 +67,7 @@ export default function SetsTable({
                     : "bg-[#F8F5F2] border-[#EAE3DE] text-[#1A1817]"
                 }`}
               >
-                <span className="font-serif font-bold text-sm sm:text-base shrink-0 w-10">
+                <span className="font-serif font-bold text-sm sm:text-base shrink-0 mr-3">
                   Set {st.setNum}
                 </span>
 
