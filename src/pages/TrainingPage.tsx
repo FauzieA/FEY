@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,6 +15,7 @@ import { TrainingRepository } from "@/repositories/trainingRepository";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { formatDate, startOfWeek, toISODate, today, weekDates, weekdayLabel } from "@/utils/date";
 import { percent } from "@/utils/format";
+import { generateUUID } from "@/utils/uuid";
 import HeroOverview from "@/components/evolution/HeroOverview";
 import MuscleMap from "@/components/evolution/MuscleMap";
 import PerformanceTrends from "@/components/evolution/PerformanceTrends";
@@ -37,6 +38,78 @@ const TRACKS = [
 export default function TrainingPage() {
   const [tab, setTab] = useState("overview");
   const snapshot = useFeySnapshot();
+
+  useEffect(() => {
+    (window as any).seedAugustSessions = async () => {
+      const aug3 = new Date("2026-08-03T12:00:00.000Z").toISOString();
+      const aug4 = new Date("2026-08-04T12:00:00.000Z").toISOString();
+      const now = new Date().toISOString();
+
+      await TrainingRepository.saveSession({
+        id: generateUUID(),
+        planTitle: "August 3 Workout",
+        completedAt: aug3,
+        durationMinutes: 45,
+        completed: true,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: "pending",
+        exercises: [
+          { exerciseId: "fb_kb_swing", exerciseName: "Kettlebell Swing", sets: [{ setNum: 1, reps: 12, weightKg: 8, completed: true }] },
+          { exerciseId: "lb_calf_raise", exerciseName: "Standing Calf Raise", sets: [{ setNum: 1, reps: 12, weightKg: 10, completed: true }] },
+          { exerciseId: "up_lat_raise", exerciseName: "Dumbbell Lateral Raise", sets: [{ setNum: 1, reps: 12, weightKg: 2.5, completed: true }] },
+          { exerciseId: "up_db_shoulder", exerciseName: "Dumbbell Shoulder Press", sets: [{ setNum: 1, reps: 12, weightKg: 5, completed: true }] },
+          { exerciseId: "lb_adductor", exerciseName: "Hip Adductor", sets: [{ setNum: 1, reps: 12, weightKg: 15, completed: true }] },
+          { exerciseId: "lb_abductor", exerciseName: "Hip Abductor", sets: [{ setNum: 1, reps: 12, weightKg: 20, completed: true }] },
+          { exerciseId: "upl_seated_row", exerciseName: "Seated Row", sets: [{ setNum: 1, reps: 12, weightKg: 20, completed: true }] },
+        ],
+      });
+
+      await TrainingRepository.saveSession({
+        id: generateUUID(),
+        planTitle: "August 4 Workout",
+        completedAt: aug4,
+        durationMinutes: 50,
+        completed: true,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: "pending",
+        exercises: [
+          { exerciseId: "upl_face_pull", exerciseName: "Cable Face Pull", sets: [{ setNum: 1, reps: 12, weightKg: 15, completed: true }] },
+          { exerciseId: "ca_cable_crunch", exerciseName: "Cable Crunch", sets: [{ setNum: 1, reps: 12, weightKg: 40, completed: true }] },
+          { exerciseId: "up_tricep_pushdown", exerciseName: "Cable Triceps Pushdown", sets: [{ setNum: 1, reps: 12, weightKg: 15, completed: true }] },
+          { exerciseId: "lb_rdl", exerciseName: "Romanian Deadlift (RDL)", sets: [{ setNum: 1, reps: 12, weightKg: 10, completed: true }] },
+          { exerciseId: "upl_hammer_curl", exerciseName: "Dumbbell Hammer Curl", sets: [{ setNum: 1, reps: 12, weightKg: 5, completed: true }] },
+          { exerciseId: "lb_hip_thrust", exerciseName: "Barbell Hip Thrust", sets: [{ setNum: 1, reps: 12, weightKg: 22.5, completed: true }] },
+          { exerciseId: "lb_squat", exerciseName: "Barbell Back Squat", sets: [{ setNum: 1, reps: 12, weightKg: 20, completed: true }] },
+        ],
+      });
+
+      console.log("August 3 and 4 workout sessions seeded.");
+    };
+
+    (window as any).seedAugust3MissingSets = async () => {
+      const aug3 = new Date("2026-08-03T12:00:00.000Z").toISOString();
+      const now2 = new Date().toISOString();
+
+      await TrainingRepository.saveSession({
+        id: generateUUID(),
+        planTitle: "August 3 Workout - Missing Sets",
+        completedAt: aug3,
+        durationMinutes: 30,
+        completed: true,
+        createdAt: now2,
+        updatedAt: now2,
+        syncStatus: "pending",
+        exercises: [
+          { exerciseId: "lb_leg_curl", exerciseName: "Leg Curl", sets: [{ setNum: 1, reps: 12, weightKg: 20, completed: true }] },
+          { exerciseId: "upl_lat_pulldown", exerciseName: "Lat Pulldown", sets: [{ setNum: 1, reps: 10, weightKg: 25, completed: true }] },
+        ],
+      });
+
+      console.log("August 3 missing leg curl and lat pulldown session seeded.");
+    };
+  }, []);
 
   const weekStart = startOfWeek();
   const sessionsThisWeek = snapshot.sessions.filter((session) => toISODate(session.completedAt) >= weekStart);
@@ -156,12 +229,16 @@ function LogTab() {
           const reps = Number(form.reps) || 0;
           const weightKg = Number(form.weightKg) || 0;
 
+          const now = new Date().toISOString();
           await TrainingRepository.saveSession({
-            id: `session_${exercise.id}_${form.date}_${Date.now()}`,
+            id: generateUUID(),
             planTitle: exercise.name,
             completedAt: new Date(`${form.date}T12:00:00`).toISOString(),
             durationMinutes: Number(form.durationMinutes) || 0,
             completed: true,
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: 'pending',
             exercises: [
               {
                 exerciseId: exercise.id,

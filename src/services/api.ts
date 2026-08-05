@@ -47,7 +47,19 @@ function buildRequestBody(endpoint: string, body: any): any {
     return normalized;
   }
 
+  const cleaned: Record<string, any> = { ...normalized };
+  delete cleaned.created_at;
+  delete cleaned.updated_at;
+  delete cleaned.sync_status;
+  delete cleaned.remote_id;
+
   const path = endpoint.toLowerCase();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (cleaned.id && ['/workouts', '/xp-events', '/personal-records'].some((segment) => path.includes(segment))) {
+    if (!uuidRegex.test(String(cleaned.id))) {
+      delete cleaned.id;
+    }
+  }
 
   if (path.includes('/workouts')) {
     const exercises = Array.isArray(normalized.exercises) ? normalized.exercises : [];
@@ -180,7 +192,7 @@ function buildRequestBody(endpoint: string, body: any): any {
     return payload;
   }
 
-  return normalized;
+  return cleaned;
 }
 
 // Generic API methods

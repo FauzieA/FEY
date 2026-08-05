@@ -28,23 +28,30 @@ export type AttributeId =
   | "stewardship"
   | "connection";
 
+export type SyncStatus = 'pending' | 'synced' | 'failed';
+
+export interface SyncMetadata {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus: SyncStatus;
+  remoteId?: string | number;
+}
+
 /* ------------------------------- Character -------------------------------- */
 
-export interface XpEvent {
-  id?: number;
+export interface XpEvent extends SyncMetadata {
   module: XpModule;
   activity: string;
   amount: number;
   attribute: AttributeId;
   /** ISO date (YYYY-MM-DD) the activity happened on. */
   date: string;
-  createdAt: string;
   /** Optional local session id this XP is attributed to */
   sessionId?: string;
 }
 
-export interface AchievementRecord {
-  id: string;
+export interface AchievementRecord extends SyncMetadata {
   unlockedAt: string;
 }
 
@@ -53,15 +60,14 @@ export interface AchievementRecord {
 export const PRAYER_NAMES = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 export type PrayerName = (typeof PRAYER_NAMES)[number];
 
-export interface PrayerLog {
+export interface PrayerLog extends SyncMetadata {
   /** ISO date, one record per day. */
   date: string;
   prayers: Record<PrayerName, boolean>;
   notes?: string;
 }
 
-export interface QuranReadingLog {
-  id?: number;
+export interface QuranReadingLog extends SyncMetadata {
   date: string;
   surah: string;
   fromAyah: number;
@@ -73,8 +79,7 @@ export interface QuranReadingLog {
 
 export type MemorizationStatus = "learning" | "memorized" | "needs-work";
 
-export interface MemorizationEntry {
-  id?: number;
+export interface MemorizationEntry extends SyncMetadata {
   surah: string;
   fromAyah: number;
   toAyah: number;
@@ -83,8 +88,7 @@ export interface MemorizationEntry {
   lastReviewedAt?: string;
 }
 
-export interface RevisionLog {
-  id?: number;
+export interface RevisionLog extends SyncMetadata {
   date: string;
   surah: string;
   /** Self-assessed recall quality, 1 (shaky) to 5 (solid). */
@@ -92,7 +96,7 @@ export interface RevisionLog {
   notes?: string;
 }
 
-export interface AdhkarLog {
+export interface AdhkarLog extends SyncMetadata {
   /** ISO date, one record per day. */
   date: string;
   morning: boolean;
@@ -103,8 +107,7 @@ export interface AdhkarLog {
   completedItems?: string[];
 }
 
-export interface MissedFast {
-  id?: number;
+export interface MissedFast extends SyncMetadata {
   /** Date the fast was missed. */
   missedOn: string;
   reason?: string;
@@ -113,8 +116,7 @@ export interface MissedFast {
 
 /* --------------------------------- Health --------------------------------- */
 
-export interface Measurement {
-  id?: number;
+export interface Measurement extends SyncMetadata {
   date: string;
   waistCm?: number;
   hipsCm?: number;
@@ -124,15 +126,13 @@ export interface Measurement {
   notes?: string;
 }
 
-export interface WeightLog {
-  id?: number;
+export interface WeightLog extends SyncMetadata {
   date: string;
   weightKg: number;
   notes?: string;
 }
 
-export interface SleepLog {
-  id?: number;
+export interface SleepLog extends SyncMetadata {
   /** Date the night started. */
   date: string;
   /** Start time in HH:MM format */
@@ -146,8 +146,7 @@ export interface SleepLog {
   notes?: string;
 }
 
-export interface CycleLog {
-  id?: number;
+export interface CycleLog extends SyncMetadata {
   startDate: string;
   endDate?: string | null;
   symptoms?: string;
@@ -157,10 +156,9 @@ export interface CycleLog {
   learnedAverageCycle?: number;
 }
 
-export interface CycleSymptomLog {
-  id?: number;
+export interface CycleSymptomLog extends SyncMetadata {
   date: string;
-  cycleId?: number;
+  cycleId?: string;
   /** Current phase at the time of logging */
   phase: "menstrual" | "follicular" | "ovulation" | "luteal";
   /** Energy level 1-5 */
@@ -175,8 +173,7 @@ export interface CycleSymptomLog {
   notes?: string;
 }
 
-export interface HealthNote {
-  id?: number;
+export interface HealthNote extends SyncMetadata {
   date: string;
   category: "symptom" | "appointment" | "medication" | "general";
   title: string;
@@ -187,8 +184,7 @@ export interface HealthNote {
 
 export type BookStatus = "reading" | "finished" | "waiting";
 
-export interface Book {
-  id?: number;
+export interface Book extends SyncMetadata {
   title: string;
   author: string;
   totalPages: number;
@@ -207,9 +203,9 @@ export interface Book {
   footnotes?: string[];
 }
 
-export interface ReadingSession {
-  id?: number;
-  bookId: number;
+export interface ReadingSession extends SyncMetadata {
+  bookId: string;
+  bookRemoteId?: string | number;
   date: string;
   pagesRead: number;
   minutes?: number;
@@ -227,17 +223,15 @@ export interface PerfumeIngredient {
   dilution?: number;
 }
 
-export interface PerfumeFormula {
-  id?: number;
+export interface PerfumeFormula extends SyncMetadata {
   name: string;
   inspiration?: string;
-  createdAt: string;
   archived?: boolean;
 }
 
-export interface PerfumeVersion {
-  id?: number;
-  formulaId: number;
+export interface PerfumeVersion extends SyncMetadata {
+  formulaId: string;
+  formulaRemoteId?: string | number;
   version: string;
   date: string;
   unit: "drops" | "g" | "ml";
@@ -251,12 +245,12 @@ export interface PerfumeVersion {
 
 /* --------------------------------- Wealth --------------------------------- */
 
-export interface SavingsEntry {
-  id?: number;
+export interface SavingsEntry extends SyncMetadata {
   date: string;
   amount: number;
   /** Optional goal this deposit belongs to. */
-  goalId?: number | null;
+  goalId?: string | null;
+  goalRemoteId?: string | number | null;
   note?: string;
   /** Currency code (e.g., USD, EUR, NGN, MYR) */
   currency?: string;
@@ -264,27 +258,22 @@ export interface SavingsEntry {
   location?: string;
 }
 
-export interface SavingsGoal {
-  id?: number;
+export interface SavingsGoal extends SyncMetadata {
   name: string;
   targetAmount: number;
   targetDate?: string;
-  createdAt: string;
   completedAt?: string | null;
 }
 
-export interface PurchasePlan {
-  id?: number;
+export interface PurchasePlan extends SyncMetadata {
   name: string;
   price: number;
   priority: "low" | "medium" | "high";
-  createdAt: string;
   purchasedAt?: string | null;
   notes?: string;
 }
 
-export interface WealthProfile {
-  id: string;
+export interface WealthProfile extends SyncMetadata {
   currency: string;
   hourlyRate: number;
   monthlySavingsTarget: number;
@@ -292,8 +281,7 @@ export interface WealthProfile {
 
 /* ---------------------------------- Life ---------------------------------- */
 
-export interface JournalEntry {
-  id?: number;
+export interface JournalEntry extends SyncMetadata {
   date: string;
   title: string;
   body: string;
@@ -301,8 +289,7 @@ export interface JournalEntry {
   gratitude?: string;
 }
 
-export interface Person {
-  id?: number;
+export interface Person extends SyncMetadata {
   name: string;
   relationship: string;
   /** How often (in days) I want to reach out. */
@@ -311,18 +298,17 @@ export interface Person {
   notes?: string;
 }
 
-export interface CallReminder {
-  id?: number;
-  personId: number;
+export interface CallReminder extends SyncMetadata {
+  personId: string;
+  personRemoteId?: string | number;
   dueDate: string;
   completedAt?: string | null;
   note?: string;
 }
 
-export interface TimelineEvent {
-  id?: number;
+export interface TimelineEvent extends SyncMetadata {
   date: string;
-  title: string
+  title: string;
   category: "milestone" | "memory" | "decision" | "travel" | "other";
   description?: string;
 }

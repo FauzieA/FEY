@@ -87,7 +87,7 @@ function SavingsTab() {
             await WealthRepository.addSavings({
               date: form.date,
               amount: Number(form.amount),
-              goalId: form.goalId ? Number(form.goalId) : null,
+              goalId: form.goalId || null,
               note: form.note || undefined,
               currency: form.currency || profile.currency,
               location: form.location || undefined,

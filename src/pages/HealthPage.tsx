@@ -342,7 +342,7 @@ function CycleTab() {
   const [form, setForm] = useState({ startDate: today(), symptoms: "", flow: "3" });
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingCycle, setEditingCycle] = useState<{ id?: number; startDate: string; endDate?: string } | null>(null);
+  const [editingCycle, setEditingCycle] = useState<{ id?: string; startDate: string; endDate?: string } | null>(null);
   const [editForm, setEditForm] = useState({ startDate: "", endDate: "" });
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [endDate, setEndDate] = useState(today());
@@ -415,18 +415,18 @@ function CycleTab() {
     return null;
   }
 
-  const handleDeleteCycle = async (id: number) => {
+  const handleDeleteCycle = async (id: string) => {
     if (confirm("Are you sure you want to delete this period entry?")) {
       await HealthRepository.removeCycle(id);
     }
   };
 
-  const handleEndCycle = async (id: number, endDate: string) => {
+  const handleEndCycle = async (id: string, endDate: string) => {
     await HealthRepository.endCycle(id, endDate);
     setShowEndDatePicker(false);
   };
 
-const handleEditCycle = (cycle: { id?: number; startDate: string; endDate?: string | null }) => {
+const handleEditCycle = (cycle: { id?: string; startDate: string; endDate?: string | null }) => {
     if (cycle.id === undefined) return;
     setEditingCycle({ id: cycle.id, startDate: cycle.startDate, endDate: cycle.endDate ?? undefined });
     setEditForm({ startDate: cycle.startDate, endDate: cycle.endDate || "" });

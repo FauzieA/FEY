@@ -1,6 +1,7 @@
 import { db } from '@/db/dexie';
 import { syncService } from '@/services/syncService';
 import { toISODate } from '@/utils/date';
+import { generateUUID } from '@/utils/uuid';
 import type { WorkoutPlan, WorkoutSession, PersonalRecord } from '@/db/dexie';
 
 export class WorkoutRepository {
@@ -49,29 +50,36 @@ export class WorkoutRepository {
 
     if (!existingPr || weightKg > existingPr.weight) {
       const today = toISODate(new Date());
+      const recordId = existingPr?.id ?? generateUUID();
 
       if (existingPr && existingPr.id !== undefined) {
         await db.personalRecords.update(existingPr.id, {
           weight: weightKg,
           date: today,
+          updatedAt: new Date().toISOString(),
+          syncStatus: 'pending',
         });
       } else {
         await db.personalRecords.add({
+          id: recordId,
           exerciseId,
           weight: weightKg,
           date: today,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          syncStatus: 'pending',
         });
       }
       
       // Queue sync to backend
       const prPayload = {
+        id: recordId,
         exerciseId,
         weight: weightKg,
         date: today,
-      } as const;
+      };
 
       if (existingPr && existingPr.id !== undefined) {
-        // include id for update
         syncService.queueSync('personal_record', { id: existingPr.id, ...prPayload }, 'update');
       } else {
         syncService.queueSync('personal_record', prPayload, 'create');

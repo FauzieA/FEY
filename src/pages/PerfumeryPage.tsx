@@ -16,7 +16,7 @@ import { percent } from "@/utils/format";
 
 export default function PerfumeryPage() {
   const snapshot = useFeySnapshot();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formula, setFormula] = useState({ name: "", inspiration: "" });
 
   const formulas = snapshot.perfumeFormulas;
@@ -182,7 +182,7 @@ function nextLabel(previous?: PerfumeVersion): string {
   return match ? `v${Number(match[1]) + 1}` : "v1";
 }
 
-function VersionForm({ formulaId, previous }: { formulaId: number; previous?: PerfumeVersion }) {
+function VersionForm({ formulaId, previous }: { formulaId: string; previous?: PerfumeVersion }) {
   const [unit, setUnit] = useState<PerfumeVersion["unit"]>(previous?.unit ?? "drops");
   const [date, setDate] = useState(today());
   const [observations, setObservations] = useState("");

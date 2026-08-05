@@ -67,7 +67,7 @@ export interface SessionExercise {
 }
 
 export interface WorkoutSession {
-  id: string;
+  id: string; // Client-generated UUID
   planId?: string | number;
   planTitle?: string;
   startedAt?: string | Date;
@@ -77,14 +77,20 @@ export interface WorkoutSession {
   xpEarned?: number;
   completed?: boolean; // Optional
   exercises: SessionExercise[];
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+  syncStatus: 'pending' | 'synced' | 'failed';
 }
 
 export interface PersonalRecord {
-  id?: string | number;
+  id: string; // Client-generated UUID
   exerciseId: string;
   weight: number;
   reps?: number;
   date?: string | Date;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+  syncStatus: 'pending' | 'synced' | 'failed';
 }
 
 export interface CharacterAttribute {
@@ -105,10 +111,13 @@ export interface CharacterProfile {
 }
 
 export interface AppSettings {
-  id: string; // e.g., 'app_settings'
+  id: string; // e.g., 'app_settings' or UUID
   defaultRestSeconds: number;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+  syncStatus: 'pending' | 'synced' | 'failed';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -119,48 +128,48 @@ class FeyDatabase extends Dexie {
   /* Training */
   plans!: Dexie.Table<WorkoutPlan, string>;
   sessions!: Dexie.Table<WorkoutSession, string>;
-  personalRecords!: Dexie.Table<PersonalRecord, string | number>;
+  personalRecords!: Dexie.Table<PersonalRecord, string>;
   character!: Dexie.Table<CharacterProfile, string>;
   settings!: Dexie.Table<AppSettings, string>;
 
   /* Character */
-  xpEvents!: Dexie.Table<XpEvent, number>;
+  xpEvents!: Dexie.Table<XpEvent, string>;
   achievements!: Dexie.Table<AchievementRecord, string>;
 
   /* Faith */
   prayerLogs!: Dexie.Table<PrayerLog, string>;
-  quranReading!: Dexie.Table<QuranReadingLog, number>;
-  memorization!: Dexie.Table<MemorizationEntry, number>;
-  revisions!: Dexie.Table<RevisionLog, number>;
+  quranReading!: Dexie.Table<QuranReadingLog, string>;
+  memorization!: Dexie.Table<MemorizationEntry, string>;
+  revisions!: Dexie.Table<RevisionLog, string>;
   adhkarLogs!: Dexie.Table<AdhkarLog, string>;
-  missedFasts!: Dexie.Table<MissedFast, number>;
+  missedFasts!: Dexie.Table<MissedFast, string>;
 
   /* Health */
-  measurements!: Dexie.Table<Measurement, number>;
-  weights!: Dexie.Table<WeightLog, number>;
-  sleepLogs!: Dexie.Table<SleepLog, number>;
-  cycleLogs!: Dexie.Table<CycleLog, number>;
-  healthNotes!: Dexie.Table<HealthNote, number>;
+  measurements!: Dexie.Table<Measurement, string>;
+  weights!: Dexie.Table<WeightLog, string>;
+  sleepLogs!: Dexie.Table<SleepLog, string>;
+  cycleLogs!: Dexie.Table<CycleLog, string>;
+  healthNotes!: Dexie.Table<HealthNote, string>;
 
   /* Library */
-  books!: Dexie.Table<Book, number>;
-  readingSessions!: Dexie.Table<ReadingSession, number>;
+  books!: Dexie.Table<Book, string>;
+  readingSessions!: Dexie.Table<ReadingSession, string>;
 
   /* Perfumery */
-  perfumeFormulas!: Dexie.Table<PerfumeFormula, number>;
-  perfumeVersions!: Dexie.Table<PerfumeVersion, number>;
+  perfumeFormulas!: Dexie.Table<PerfumeFormula, string>;
+  perfumeVersions!: Dexie.Table<PerfumeVersion, string>;
 
   /* Wealth */
-  savingsEntries!: Dexie.Table<SavingsEntry, number>;
-  savingsGoals!: Dexie.Table<SavingsGoal, number>;
-  purchasePlans!: Dexie.Table<PurchasePlan, number>;
+  savingsEntries!: Dexie.Table<SavingsEntry, string>;
+  savingsGoals!: Dexie.Table<SavingsGoal, string>;
+  purchasePlans!: Dexie.Table<PurchasePlan, string>;
   wealthProfile!: Dexie.Table<WealthProfile, string>;
 
   /* Life */
-  journalEntries!: Dexie.Table<JournalEntry, number>;
-  people!: Dexie.Table<Person, number>;
-  callReminders!: Dexie.Table<CallReminder, number>;
-  timelineEvents!: Dexie.Table<TimelineEvent, number>;
+  journalEntries!: Dexie.Table<JournalEntry, string>;
+  people!: Dexie.Table<Person, string>;
+  callReminders!: Dexie.Table<CallReminder, string>;
+  timelineEvents!: Dexie.Table<TimelineEvent, string>;
 
   constructor() {
     super("FeyDatabase");
@@ -168,45 +177,60 @@ class FeyDatabase extends Dexie {
     // Schema definition for IndexedDB
     this.version(1).stores({
       plans: "id, dayOfWeek",
-      sessions: "id, completedAt, planId",
-      personalRecords: "++id, exerciseId, date",
-      character: "id",
-      settings: "id",
+      sessions: "id, completedAt, planId, syncStatus, updatedAt",
+      personalRecords: "id, exerciseId, date, syncStatus, updatedAt",
+      character: "id, syncStatus, updatedAt",
+      settings: "id, syncStatus, updatedAt",
     });
 
     // v2 expands FEY from a workout tracker into a full life operating system.
     this.version(2).stores({
-      xpEvents: "++id, module, date, attribute",
+      xpEvents: "id, module, date, attribute",
       achievements: "id, unlockedAt",
 
-      prayerLogs: "date",
-      quranReading: "++id, date, surah",
-      memorization: "++id, surah, status",
-      revisions: "++id, date, surah",
-      adhkarLogs: "date",
-      missedFasts: "++id, missedOn, madeUpOn",
+      prayerLogs: "id, date",
+      quranReading: "id, date, surah",
+      memorization: "id, surah, status",
+      revisions: "id, date, surah",
+      adhkarLogs: "id, date",
+      missedFasts: "id, missedOn, madeUpOn",
 
-      measurements: "++id, date",
-      weights: "++id, date",
-      sleepLogs: "++id, date",
-      cycleLogs: "++id, startDate",
-      healthNotes: "++id, date, category",
+      measurements: "id, date",
+      weights: "id, date",
+      sleepLogs: "id, date",
+      cycleLogs: "id, startDate",
+      healthNotes: "id, date, category",
 
-      books: "++id, status, title",
-      readingSessions: "++id, bookId, date",
+      books: "id, status, title",
+      readingSessions: "id, bookId, date",
 
-      perfumeFormulas: "++id, name",
-      perfumeVersions: "++id, formulaId, date",
+      perfumeFormulas: "id, name",
+      perfumeVersions: "id, formulaId, date",
 
-      savingsEntries: "++id, date, goalId",
-      savingsGoals: "++id, name",
-      purchasePlans: "++id, priority, purchasedAt",
+      savingsEntries: "id, date, goalId",
+      savingsGoals: "id, name",
+      purchasePlans: "id, priority, purchasedAt",
       wealthProfile: "id",
 
-      journalEntries: "++id, date",
-      people: "++id, name",
-      callReminders: "++id, personId, dueDate",
-      timelineEvents: "++id, date, category",
+      journalEntries: "id, date",
+      people: "id, name",
+      callReminders: "id, personId, dueDate",
+      timelineEvents: "id, date, category",
+    });
+
+    this.on('blocked', () => {
+      console.warn('Dexie database upgrade blocked by another connection.');
+    });
+
+    this.open().catch(async (error: any) => {
+      if (error?.name === 'UpgradeError' || error?.message?.includes('Not yet support for changing primary key')) {
+        console.warn('Incompatible Dexie schema detected; deleting local database and reopening.', error);
+        this.close();
+        await Dexie.delete(this.name);
+        await this.open();
+      } else {
+        throw error;
+      }
     });
   }
 }

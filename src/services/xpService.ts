@@ -3,6 +3,7 @@ import { syncService } from "@/services/syncService";
 import { consistencyService } from "@/services/consistencyService";
 import { calculateActivityXp, type Difficulty, type AttributeId } from "@/services/xpSystem";
 import { today } from "@/utils/date";
+import { generateUUID } from "@/utils/uuid";
 import type { XpEvent, XpModule } from "@/types/modules";
 
 /**
@@ -111,14 +112,21 @@ export async function logActivity(
     if (amount <= 0) continue;
 
     const event: XpEvent = {
+      id: generateUUID(),
       module,
       activity: activityKey,
       attribute: breakdown.attribute as AttributeId,
       amount,
       date,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'pending',
       ...(options.sessionId ? { sessionId: options.sessionId } : {}),
     };
+
+    if (!event.id) {
+      event.id = generateUUID();
+    }
 
     // Save to local Dexie immediately
     await db.xpEvents.add(event);

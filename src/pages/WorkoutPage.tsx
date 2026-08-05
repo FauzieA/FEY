@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { db } from "@/db/dexie";
 import { TrainingRepository } from "@/repositories/trainingRepository";
+import { generateUUID } from "@/utils/uuid";
 import { Check } from "lucide-react";
 
 import WorkoutHeader from "@/components/workout/WorkoutHeader";
@@ -64,20 +65,22 @@ export default function WorkoutPage() {
   const todayStr = useMemo(() => new Date().toDateString(), []);
 
   const existingLog = useLiveQuery(async () => {
-    const logs = await db.sessions
-      .where("id")
-      .startsWith(`session_${exercise.id}_`)
-      .toArray();
+    const logs = await db.sessions.toArray();
     return logs.find(
-      (l) => new Date(l.completedAt).toDateString() === todayStr
+      (l) =>
+        new Date(l.completedAt).toDateString() === todayStr &&
+        Array.isArray(l.exercises) &&
+        l.exercises.some((ex) => ex.exerciseId === exercise.id)
     );
   }, [exercise.id, todayStr]);
 
   const exerciseLogs = useLiveQuery(async () => {
-    return db.sessions
-      .where("id")
-      .startsWith(`session_${exercise.id}_`)
-      .toArray();
+    const logs = await db.sessions.toArray();
+    return logs.filter(
+      (l) =>
+        Array.isArray(l.exercises) &&
+        l.exercises.some((ex) => ex.exerciseId === exercise.id)
+    );
   }, [exercise.id]);
 
   const [sets, setSets] = useState<SetItem[]>(() => {
@@ -232,15 +235,18 @@ export default function WorkoutPage() {
 
   const handleFinishSession = async () => {
     try {
-      const dateKey = new Date().toISOString().slice(0, 10);
-      const sessionId = `session_${exercise.id}_${dateKey}`;
+      const sessionId = generateUUID();
 
+      const now = new Date().toISOString();
       await TrainingRepository.saveSession({
         id: sessionId,
         planTitle: exercise.name,
         completedAt: new Date().toISOString(),
         durationMinutes: 5,
         xpEarned: 100,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'pending',
         exercises: [
           {
             exerciseId: exercise.id,
