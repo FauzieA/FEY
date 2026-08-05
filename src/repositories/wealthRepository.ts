@@ -26,7 +26,7 @@ export const WealthRepository = {
     syncService.queueSync('wealth_profile', { ...DEFAULT_WEALTH_PROFILE, ...patch });
   },
 
-  async addSavings(entry: Omit<SavingsEntry, "id">): Promise<void> {
+  async addSavings(entry: Omit<SavingsEntry, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: SavingsEntry = {
       id: generateUUID(),
       ...entry,
@@ -41,7 +41,7 @@ export const WealthRepository = {
     if (entry.goalId) await WealthRepository.settleGoal(entry.goalId);
   },
 
-  async addGoal(goal: Omit<SavingsGoal, "id" | "createdAt">): Promise<void> {
+  async addGoal(goal: Omit<SavingsGoal, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: SavingsGoal = {
       id: generateUUID(),
       ...goal,
@@ -68,7 +68,7 @@ export const WealthRepository = {
     }
   },
 
-  async addPurchasePlan(plan: Omit<PurchasePlan, "id" | "createdAt">): Promise<void> {
+  async addPurchasePlan(plan: Omit<PurchasePlan, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: PurchasePlan = {
       id: generateUUID(),
       ...plan,

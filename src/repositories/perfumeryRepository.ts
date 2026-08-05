@@ -6,7 +6,7 @@ import { generateUUID } from "@/utils/uuid";
 import type { PerfumeFormula, PerfumeVersion } from "@/types/modules";
 
 export const PerfumeryRepository = {
-  async createFormula(formula: Omit<PerfumeFormula, "id" | "createdAt">): Promise<string> {
+  async createFormula(formula: Omit<PerfumeFormula, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<string> {
     const record: PerfumeFormula = {
       id: generateUUID(),
       ...formula,
@@ -21,7 +21,7 @@ export const PerfumeryRepository = {
     return record.id;
   },
 
-  async addVersion(version: Omit<PerfumeVersion, "id">): Promise<void> {
+  async addVersion(version: Omit<PerfumeVersion, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: PerfumeVersion = {
       id: generateUUID(),
       ...version,

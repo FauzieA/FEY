@@ -6,7 +6,7 @@ import { generateUUID } from "@/utils/uuid";
 import type { CallReminder, JournalEntry, Person, TimelineEvent } from "@/types/modules";
 
 export const LifeRepository = {
-  async addJournalEntry(entry: Omit<JournalEntry, "id">): Promise<void> {
+  async addJournalEntry(entry: Omit<JournalEntry, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: JournalEntry = {
       id: generateUUID(),
       ...entry,
@@ -20,7 +20,7 @@ export const LifeRepository = {
     syncService.queueSync('journal', record, 'create');
   },
 
-  async addPerson(person: Omit<Person, "id">): Promise<string> {
+  async addPerson(person: Omit<Person, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<string> {
     const record: Person = {
       id: generateUUID(),
       ...person,
@@ -70,7 +70,7 @@ export const LifeRepository = {
     syncService.queueSync('call_reminder_complete', { id: reminderId, completedAt: today() });
   },
 
-  async addReminder(reminder: Omit<CallReminder, "id">): Promise<void> {
+  async addReminder(reminder: Omit<CallReminder, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: CallReminder = {
       id: generateUUID(),
       ...reminder,
@@ -83,7 +83,7 @@ export const LifeRepository = {
     syncService.queueSync('call_reminder', record, 'create');
   },
 
-  async addTimelineEvent(event: Omit<TimelineEvent, "id">): Promise<void> {
+  async addTimelineEvent(event: Omit<TimelineEvent, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: TimelineEvent = {
       id: generateUUID(),
       ...event,
