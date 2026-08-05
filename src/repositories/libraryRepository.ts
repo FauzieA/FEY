@@ -6,7 +6,7 @@ import { generateUUID } from "@/utils/uuid";
 import type { Book, ReadingSession } from "@/types/modules";
 
 export const LibraryRepository = {
-  async addBook(book: Omit<Book, "id">): Promise<void> {
+  async addBook(book: Omit<Book, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: Book = {
       id: generateUUID(),
       ...book,

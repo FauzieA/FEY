@@ -29,8 +29,8 @@ export const LifeRepository = {
       syncStatus: 'pending',
     };
 
-    const id = await db.people.add(record);
-    await db.callReminders.add({
+    await db.people.add(record);
+    const reminderRecord: CallReminder = {
       id: generateUUID(),
       personId: record.id,
       dueDate: addDays(today(), person.cadenceDays),
@@ -38,7 +38,8 @@ export const LifeRepository = {
       createdAt: today(),
       updatedAt: today(),
       syncStatus: 'pending',
-    });
+    };
+    await db.callReminders.add(reminderRecord);
     syncService.queueSync('person', record, 'create');
     syncService.queueSync('call_reminder', { personId: record.id, dueDate: addDays(today(), person.cadenceDays), completedAt: null }, 'create');
     return record.id;

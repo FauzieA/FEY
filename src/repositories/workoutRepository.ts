@@ -73,7 +73,6 @@ export class WorkoutRepository {
       
       // Queue sync to backend
       const prPayload = {
-        id: recordId,
         exerciseId,
         weight: weightKg,
         date: today,

@@ -156,7 +156,7 @@ export const FaithRepository = {
     return {
       id: generateUUID(),
       date,
-      prayers: undefined as any,
+      prayers: emptyPrayers(),
       morning: false,
       evening: false,
       afterPrayer: false,

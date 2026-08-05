@@ -6,7 +6,7 @@ import { generateUUID } from "@/utils/uuid";
 import type { CycleLog, HealthNote, Measurement, SleepLog, WeightLog } from "@/types/modules";
 
 export const HealthRepository = {
-  async logWeight(entry: Omit<WeightLog, "id">): Promise<void> {
+  async logWeight(entry: Omit<WeightLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: WeightLog = {
       id: generateUUID(),
       ...entry,
@@ -20,7 +20,7 @@ export const HealthRepository = {
     syncService.queueSync('weight', record, 'create');
   },
 
-  async addMeasurement(entry: Omit<Measurement, "id">): Promise<void> {
+  async addMeasurement(entry: Omit<Measurement, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: Measurement = {
       id: generateUUID(),
       ...entry,
@@ -34,7 +34,7 @@ export const HealthRepository = {
     syncService.queueSync('measurement', record, 'create');
   },
 
-  async logSleep(entry: Omit<SleepLog, "id">): Promise<void> {
+  async logSleep(entry: Omit<SleepLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: SleepLog = {
       id: generateUUID(),
       ...entry,
@@ -48,7 +48,7 @@ export const HealthRepository = {
     syncService.queueSync('sleep', record, 'create');
   },
 
-  async startCycle(entry: Omit<CycleLog, "id">): Promise<void> {
+  async startCycle(entry: Omit<CycleLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: CycleLog = {
       id: generateUUID(),
       ...entry,
@@ -67,7 +67,7 @@ export const HealthRepository = {
     syncService.queueSync('cycle', { id, endDate });
   },
 
-  async addHealthNote(entry: Omit<HealthNote, "id">): Promise<void> {
+  async addHealthNote(entry: Omit<HealthNote, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: HealthNote = {
       id: generateUUID(),
       ...entry,
