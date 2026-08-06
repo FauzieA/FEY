@@ -17,6 +17,7 @@ class SyncService {
   private syncInterval: NodeJS.Timeout | null = null;
   private immediateSyncTimeout: NodeJS.Timeout | null = null;
   private lastSyncedAt: string | null = null;
+  private fullSyncPromise: Promise<void> | null = null;
 
   constructor() {
     this.loadQueue();
@@ -580,17 +581,14 @@ class SyncService {
   }
 
   private async syncPersonalRecordItem(action: string, data: any) {
-    if (!data?.id) {
-      throw new Error('Personal record sync requires an id');
-    }
-
     const payload = { ...data };
-    const idIsValid = this.isUuid(data?.id);
-    if (payload.id && !idIsValid) {
+    const hasValidId = !!data?.id && this.isUuid(data.id);
+
+    if (!hasValidId) {
       delete payload.id;
     }
 
-    if (action === 'update' && idIsValid) {
+    if (action === 'update' && hasValidId) {
       try {
         const response: any = await api.put(`/personal-records/${data.id}/`, payload);
         await db.personalRecords.update(data.id, {
@@ -605,13 +603,25 @@ class SyncService {
 
     try {
       const response: any = await api.post('/personal-records/', payload);
-      await db.personalRecords.update(data.id, {
-        syncStatus: 'synced',
-        updatedAt: response.updated_at || data.updatedAt,
-      });
+      const syncedId = data?.id ?? response?.id ?? null;
+      if (syncedId) {
+        await db.personalRecords.update(syncedId, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+      } else {
+        await db.personalRecords.put({
+          ...payload,
+          id: response?.id ?? crypto.randomUUID(),
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+      }
     } catch (error) {
       console.error('Failed to sync personal record:', error);
-      await db.personalRecords.update(data.id, { syncStatus: 'failed' });
+      if (data?.id) {
+        await db.personalRecords.update(data.id, { syncStatus: 'failed' });
+      }
       throw error;
     }
   }
@@ -1261,41 +1271,53 @@ class SyncService {
 
   async syncAll() {
     if (!this.isOnline) return;
-    
-    console.log('Starting full sync from backend...');
-    const promises = [
-      this.syncProfile(),
-      this.syncSettings(),
-      this.syncPrayerLogs(),
-      this.syncWorkouts(),
-      this.syncXpEvents(),
-      this.syncPersonalRecords(),
-      this.syncBooks(),
-      this.syncReadingSessions(),
-      this.syncPerfumeFormulas(),
-      this.syncPerfumeVersions(),
-      this.syncQuranReadingLogs(),
-      this.syncMemorizationEntries(),
-      this.syncRevisionLogs(),
-      this.syncAdhkarLogs(),
-      this.syncMissedFasts(),
-      this.syncMeasurements(),
-      this.syncWeightLogs(),
-      this.syncSleepLogs(),
-      this.syncCycleLogs(),
-      this.syncHealthNotes(),
-      this.syncSavingsEntries(),
-      this.syncSavingsGoals(),
-      this.syncPurchasePlans(),
-      this.syncWealthProfile(),
-      this.syncJournalEntries(),
-      this.syncPeople(),
-      this.syncCallReminders(),
-      this.syncTimelineEvents(),
-    ];
 
-    await Promise.allSettled(promises);
-    console.log('Full sync complete');
+    if (this.fullSyncPromise) {
+      return this.fullSyncPromise;
+    }
+
+    this.fullSyncPromise = (async () => {
+      console.log('Starting full sync from backend...');
+      const promises = [
+        this.syncProfile(),
+        this.syncSettings(),
+        this.syncPrayerLogs(),
+        this.syncWorkouts(),
+        this.syncXpEvents(),
+        this.syncPersonalRecords(),
+        this.syncBooks(),
+        this.syncReadingSessions(),
+        this.syncPerfumeFormulas(),
+        this.syncPerfumeVersions(),
+        this.syncQuranReadingLogs(),
+        this.syncMemorizationEntries(),
+        this.syncRevisionLogs(),
+        this.syncAdhkarLogs(),
+        this.syncMissedFasts(),
+        this.syncMeasurements(),
+        this.syncWeightLogs(),
+        this.syncSleepLogs(),
+        this.syncCycleLogs(),
+        this.syncHealthNotes(),
+        this.syncSavingsEntries(),
+        this.syncSavingsGoals(),
+        this.syncPurchasePlans(),
+        this.syncWealthProfile(),
+        this.syncJournalEntries(),
+        this.syncPeople(),
+        this.syncCallReminders(),
+        this.syncTimelineEvents(),
+      ];
+
+      await Promise.allSettled(promises);
+      console.log('Full sync complete');
+    })();
+
+    try {
+      return await this.fullSyncPromise;
+    } finally {
+      this.fullSyncPromise = null;
+    }
   }
 
   private startAutoSync() {

@@ -311,7 +311,7 @@ export default function WorkoutPage() {
         className="w-full bg-[#6B2D3A] text-[#F8F5F2] hover:bg-[#58242F] font-serif text-sm sm:text-base py-3.5 sm:py-4 rounded-2xl sm:rounded-3xl shadow-lg shadow-[#6B2D3A]/20 transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
       >
         <Check className="w-5 h-5" />
-        <span>Complete Exercise Session</span>
+        <span>Complete Workout Day</span>
       </button>
     </div>
   );
