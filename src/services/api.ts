@@ -66,8 +66,8 @@ function buildRequestBody(endpoint: string, body: any): any {
     return {
       plan_id: normalized.plan_id ?? normalized.planId ?? null,
       plan_title: normalized.plan_title ?? normalized.planTitle ?? null,
-      started_at: normalized.started_at ?? normalized.startedAt ?? normalized.completed_at ?? normalized.completedAt ?? null,
-      completed_at: normalized.completed_at ?? normalized.completedAt ?? normalized.started_at ?? normalized.startedAt ?? null,
+      started_at: normalized.started_at ?? normalized.startedAt ?? null,
+      completed_at: normalized.completed_at ?? normalized.completedAt ?? null,
       duration_seconds: normalized.duration_seconds ?? normalized.durationSeconds ?? (typeof normalized.duration_minutes === 'number' ? normalized.duration_minutes * 60 : 0),
       duration_minutes: normalized.duration_minutes ?? normalized.durationMinutes ?? Math.max(0, Math.round((normalized.duration_seconds ?? normalized.durationSeconds ?? 0) / 60)),
       total_sets_completed: normalized.total_sets_completed ?? normalized.totalSetsCompleted ?? exercises.reduce((count: number, exercise: any) => count + (Array.isArray(exercise?.sets) ? exercise.sets.length : 0), 0),

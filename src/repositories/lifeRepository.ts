@@ -62,7 +62,7 @@ export const LifeRepository = {
         completedAt: null,
         createdAt: today(),
         updatedAt: today(),
-        syncStatus: 'pending',
+        syncStatus: 'pending' as const,
       };
       await db.callReminders.add(newReminder);
       syncService.queueSync('call_reminder', newReminder, 'create');

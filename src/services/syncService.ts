@@ -836,6 +836,25 @@ class SyncService {
     }
   }
 
+  async syncPersonalRecords() {
+    if (!this.isOnline) return;
+
+    try {
+      const records = await api.get<any[]>('/personal-records/').catch(() => []);
+      const localRecords = await db.personalRecords.toArray();
+      const localRecordMap = new Map(localRecords.map((item: any) => [item.id, item]));
+
+      for (const record of records) {
+        const existing = localRecordMap.get(record.id);
+        if (!existing || existing.syncStatus !== 'pending') {
+          await db.personalRecords.put(this.createSyncedRecord(record));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync personal records:', error);
+    }
+  }
+
   async syncQuranReadingLogs() {
     if (!this.isOnline) return;
     
@@ -1250,11 +1269,14 @@ class SyncService {
       this.syncPrayerLogs(),
       this.syncWorkouts(),
       this.syncXpEvents(),
+      this.syncPersonalRecords(),
       this.syncBooks(),
       this.syncReadingSessions(),
       this.syncPerfumeFormulas(),
       this.syncPerfumeVersions(),
       this.syncQuranReadingLogs(),
+      this.syncMemorizationEntries(),
+      this.syncRevisionLogs(),
       this.syncAdhkarLogs(),
       this.syncMissedFasts(),
       this.syncMeasurements(),

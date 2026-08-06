@@ -91,7 +91,7 @@ export const FaithRepository = {
     await logActivity("quran_reading", { date: entry.date });
   },
 
-  async addMemorization(entry: Omit<MemorizationEntry, "id">): Promise<void> {
+  async addMemorization(entry: Omit<MemorizationEntry, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: MemorizationEntry = {
       id: generateUUID(),
       ...entry,
@@ -156,7 +156,6 @@ export const FaithRepository = {
     return {
       id: generateUUID(),
       date,
-      prayers: emptyPrayers(),
       morning: false,
       evening: false,
       afterPrayer: false,
@@ -200,7 +199,7 @@ export const FaithRepository = {
     syncService.queueSync('adhkar', { id: log.id, date, istighfarCount: log.istighfarCount + count }, 'update');
   },
 
-  async addMissedFast(entry: Omit<MissedFast, "id">): Promise<void> {
+  async addMissedFast(entry: Omit<MissedFast, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
     const record: MissedFast = {
       id: generateUUID(),
       ...entry,
