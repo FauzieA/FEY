@@ -2,6 +2,7 @@ import { db } from "@/db/dexie";
 import { syncService } from "@/services/syncService";
 import { logActivity } from "@/services/xpService";
 import { today } from "@/utils/date";
+import { generateUUID } from "@/utils/uuid";
 import type {
   AdhkarLog,
   MemorizationEntry,
@@ -22,63 +23,98 @@ const emptyPrayers = (): Record<PrayerName, boolean> =>
 
 export const FaithRepository = {
   async getPrayerLog(date = today()): Promise<PrayerLog> {
-    // First try local Dexie
-    const localLog = await db.prayerLogs.get(date);
+    const defaultLog: PrayerLog = {
+      id: generateUUID(),
+      date,
+      prayers: emptyPrayers(),
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    // First try local Dexie by date index
+    const localLog = await db.prayerLogs.where('date').equals(date).first();
     if (localLog) {
       // Trigger background sync
       syncService.syncPrayerLogs();
       return localLog;
     }
-    
+
     // If no local data, try to fetch from backend
     try {
       await syncService.syncPrayerLogs();
-      return (await db.prayerLogs.get(date)) ?? { date, prayers: emptyPrayers() };
+      return (await db.prayerLogs.where('date').equals(date).first()) ?? defaultLog;
     } catch (error) {
       console.error('Failed to fetch prayer log:', error);
-      return { date, prayers: emptyPrayers() };
+      return defaultLog;
     }
   },
 
   async togglePrayer(date: string, prayer: PrayerName): Promise<void> {
     const log = await FaithRepository.getPrayerLog(date);
     const nowChecked = !log.prayers[prayer];
+    const nextPrayers = { ...log.prayers, [prayer]: nowChecked };
     
     // Update local Dexie immediately
-    await db.prayerLogs.put({ ...log, prayers: { ...log.prayers, [prayer]: nowChecked } });
+    await db.prayerLogs.put({
+      ...log,
+      prayers: nextPrayers,
+      updatedAt: today(),
+      syncStatus: 'pending',
+    });
     
-    // Queue sync to backend
-    syncService.queueSync('prayer', { date, [prayer]: nowChecked ? 'on_time' : 'missed' });
+    // Queue sync to backend with the full prayer payload expected by the API
+    const prayerPayload = PRAYER_NAMES.reduce((acc, prayerName) => {
+      acc[prayerName] = nextPrayers[prayerName] ? 'on_time' : 'missed';
+      return acc;
+    }, {} as Record<PrayerName, 'on_time' | 'missed'>);
+    syncService.queueSync('prayer', { id: log.id, date, ...prayerPayload }, 'update');
     
     if (nowChecked) await logActivity("prayer_logged", { date });
   },
 
   async logQuranReading(entry: Omit<QuranReadingLog, "id">): Promise<void> {
+    const record: QuranReadingLog = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
     // Save to local Dexie immediately
-    await db.quranReading.add(entry);
+    await db.quranReading.add(record);
     
     // Queue sync to backend
-    syncService.queueSync('quran_reading', entry);
+    syncService.queueSync('quran_reading', record, 'create');
     
     await logActivity("quran_reading", { date: entry.date });
   },
 
-  async addMemorization(entry: Omit<MemorizationEntry, "id">): Promise<void> {
+  async addMemorization(entry: Omit<MemorizationEntry, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: MemorizationEntry = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
     // Save to local Dexie immediately
-    await db.memorization.add(entry);
+    await db.memorization.add(record);
     
     // Queue sync to backend
-    syncService.queueSync('memorization', entry);
+    syncService.queueSync('memorization', record, 'create');
     
     if (entry.status === "memorized") await logActivity("quran_memorization", { date: entry.startedAt });
   },
 
-  async setMemorizationStatus(id: number, status: MemorizationStatus): Promise<void> {
+  async setMemorizationStatus(id: string, status: MemorizationStatus): Promise<void> {
     const entry = await db.memorization.get(id);
     if (!entry) return;
     
     // Update local Dexie immediately
-    await db.memorization.update(id, { status, lastReviewedAt: today() });
+    await db.memorization.update(id, { status, lastReviewedAt: today(), updatedAt: today(), syncStatus: 'pending' });
     
     // Queue sync to backend
     syncService.queueSync('memorization', { id, status, lastReviewedAt: today() });
@@ -89,11 +125,19 @@ export const FaithRepository = {
   },
 
   async logRevision(entry: Omit<RevisionLog, "id">): Promise<void> {
+    const record: RevisionLog = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
     // Save to local Dexie immediately
-    await db.revisions.add(entry);
+    await db.revisions.add(record);
     
     // Queue sync to backend
-    syncService.queueSync('revision', entry);
+    syncService.queueSync('revision', record, 'create');
     
     await db.memorization
       .where("surah")
@@ -104,19 +148,22 @@ export const FaithRepository = {
   },
 
   async getAdhkarLog(date = today()): Promise<AdhkarLog> {
-    // First try local Dexie
-    const localLog = await db.adhkarLogs.get(date);
+    const localLog = await db.adhkarLogs.where('date').equals(date).first();
     if (localLog) {
       return localLog;
     }
-    
+
     return {
+      id: generateUUID(),
       date,
       morning: false,
       evening: false,
       afterPrayer: false,
       istighfarCount: 0,
       completedItems: [],
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
     };
   },
 
@@ -134,10 +181,10 @@ export const FaithRepository = {
     }
     
     // Update local Dexie immediately
-    await db.adhkarLogs.put({ ...log, completedItems: newCompletedItems });
+    await db.adhkarLogs.put({ ...log, completedItems: newCompletedItems, updatedAt: today(), syncStatus: 'pending' });
     
     // Queue sync to backend
-    syncService.queueSync('adhkar', { date, completedItems: newCompletedItems });
+    syncService.queueSync('adhkar', { id: log.id, date, completedItems: newCompletedItems }, 'update');
     
     if (nowCompleted) await logActivity("adhkar_logged", { date });
   },
@@ -146,27 +193,60 @@ export const FaithRepository = {
     const log = await FaithRepository.getAdhkarLog(date);
     
     // Update local Dexie immediately
-    await db.adhkarLogs.put({ ...log, istighfarCount: log.istighfarCount + count });
+    await db.adhkarLogs.put({ ...log, istighfarCount: log.istighfarCount + count, updatedAt: today(), syncStatus: 'pending' });
     
     // Queue sync to backend
-    syncService.queueSync('adhkar', { date, istighfarCount: log.istighfarCount + count });
+    syncService.queueSync('adhkar', { id: log.id, date, istighfarCount: log.istighfarCount + count }, 'update');
   },
 
-  async addMissedFast(entry: Omit<MissedFast, "id">): Promise<void> {
+  async addMissedFast(entry: Omit<MissedFast, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: MissedFast = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
     // Save to local Dexie immediately
-    await db.missedFasts.add(entry);
+    await db.missedFasts.add(record);
     
     // Queue sync to backend
-    syncService.queueSync('missed_fast', entry);
+    syncService.queueSync('missed_fast', record, 'create');
   },
 
-  async markFastMadeUp(id: number, date = today()): Promise<void> {
+  async markFastMadeUp(id: string, date = today()): Promise<void> {
     // Update local Dexie immediately
-    await db.missedFasts.update(id, { madeUpOn: date });
+    await db.missedFasts.update(id, { madeUpOn: date, updatedAt: today(), syncStatus: 'pending' });
     
     // Queue sync to backend
     syncService.queueSync('missed_fast', { id, madeUpOn: date });
     
     await logActivity("fast_made_up", { date });
+  },
+
+  async deleteMissedFast(id: string): Promise<void> {
+    // Delete from local Dexie immediately
+    await db.missedFasts.delete(id);
+    
+    // Queue sync to backend
+    syncService.queueSync('delete_missed_fast', id);
+  },
+
+  async deleteMemorization(id: string): Promise<void> {
+    // Delete from local Dexie immediately
+    await db.memorization.delete(id);
+    
+    // Queue sync to backend
+    syncService.queueSync('delete_memorization', id);
+  },
+
+  async deleteAdhkarLog(date: string): Promise<void> {
+    // Delete from local Dexie immediately using date index
+    const existing = await db.adhkarLogs.where('date').equals(date).first();
+    if (existing) {
+      await db.adhkarLogs.delete(existing.id);
+      syncService.queueSync('delete_adhkar_log', date);
+    }
   },
 };

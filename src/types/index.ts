@@ -25,7 +25,6 @@ export interface WorkoutSession {
   completedAt?: string | Date;
   durationSeconds: number; // Required (default to 0 when creating sessions)
   durationMinutes?: number;
-  totalVolumeKg?: number;
   completed: boolean;
   exercises: WorkoutExercise[]; // Required array (can be empty [])
 }

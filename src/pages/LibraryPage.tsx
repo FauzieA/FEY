@@ -121,11 +121,11 @@ function AddBookForm({ status }: { status: BookStatus }) {
 function CurrentTab() {
   const snapshot = useFeySnapshot();
   const reading = snapshot.books.filter((book) => book.status === "reading");
-  const [newQuote, setNewQuote] = useState<Record<number, string>>({});
-  const [newFootnote, setNewFootnote] = useState<Record<number, string>>({});
-  const [expandedBook, setExpandedBook] = useState<number | null>(null);
+  const [newQuote, setNewQuote] = useState<Record<string, string>>({});
+  const [newFootnote, setNewFootnote] = useState<Record<string, string>>({});
+  const [expandedBook, setExpandedBook] = useState<string | null>(null);
 
-  const addQuote = async (bookId: number) => {
+  const addQuote = async (bookId: string) => {
     const quote = newQuote[bookId];
     if (!quote) return;
     const book = await db.books.get(bookId);
@@ -137,7 +137,7 @@ function CurrentTab() {
     }
   };
 
-  const addFootnote = async (bookId: number) => {
+  const addFootnote = async (bookId: string) => {
     const footnote = newFootnote[bookId];
     if (!footnote) return;
     const book = await db.books.get(bookId);

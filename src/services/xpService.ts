@@ -3,6 +3,7 @@ import { syncService } from "@/services/syncService";
 import { consistencyService } from "@/services/consistencyService";
 import { calculateActivityXp, type Difficulty, type AttributeId } from "@/services/xpSystem";
 import { today } from "@/utils/date";
+import { generateUUID } from "@/utils/uuid";
 import type { XpEvent, XpModule } from "@/types/modules";
 
 /**
@@ -91,7 +92,7 @@ export type ActivityId = keyof typeof ACTIVITY_KEY_MAP;
 /** Records an XP event for an activity using the new calculation system. */
 export async function logActivity(
   activity: ActivityId,
-  options: { multiplier?: number; date?: string; difficulty?: Difficulty } = {},
+  options: { multiplier?: number; date?: string; difficulty?: Difficulty; sessionId?: string } = {},
 ): Promise<number> {
   const activityKey = ACTIVITY_KEY_MAP[activity] || activity;
   const module = ACTIVITY_MODULE_MAP[activity] || "life";
@@ -111,19 +112,27 @@ export async function logActivity(
     if (amount <= 0) continue;
 
     const event: XpEvent = {
+      id: generateUUID(),
       module,
       activity: activityKey,
       attribute: breakdown.attribute as AttributeId,
       amount,
       date,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: 'pending',
+      ...(options.sessionId ? { sessionId: options.sessionId } : {}),
     };
+
+    if (!event.id) {
+      event.id = generateUUID();
+    }
 
     // Save to local Dexie immediately
     await db.xpEvents.add(event);
     
     // Queue sync to backend
-    syncService.queueSync('xp', event);
+    syncService.queueSync('xp', event, 'create');
   }
 
   // Invalidate consistency cache after logging

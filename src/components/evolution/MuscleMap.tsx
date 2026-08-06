@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Trophy, X, ChevronRight, Dumbbell, Loader2 } from "lucide-react";
 import { db } from "@/db/dexie";
+import { EXERCISE_DATABASE } from "@/db/workoutData";
+import { resolveExerciseId } from "@/utils/exerciseMatching";
 
 interface TargetExercise {
   id: string;
@@ -23,10 +25,10 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
     name: "Back & Lats",
     tags: ["upper_pull", "grip"],
     exercises: [
-      { id: "assisted_pull_up", name: "Assisted Pull-up", contribution: 0.35, targetValue: 5, unit: "reps" },
-      { id: "lat_pulldown", name: "Lat Pulldown", contribution: 0.30, targetValue: 45, unit: "kg" },
-      { id: "seated_row", name: "Seated Cable Row", contribution: 0.25, targetValue: 40, unit: "kg" },
-      { id: "face_pull", name: "Cable Face Pull", contribution: 0.10, targetValue: 20, unit: "kg" },
+      { id: "upl_lat_pulldown", name: "Lat Pulldown", contribution: 0.35, targetValue: 45, unit: "kg" },
+      { id: "upl_seated_row", name: "Seated Cable Row", contribution: 0.30, targetValue: 40, unit: "kg" },
+      { id: "upl_face_pull", name: "Cable Face Pull", contribution: 0.25, targetValue: 40, unit: "kg" },
+      { id: "upl_hammer_curl", name: "Dumbbell Hammer Curl", contribution: 0.10, targetValue: 30, unit: "kg" },
     ],
   },
   {
@@ -34,10 +36,10 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
     name: "Shoulders & Delts",
     tags: ["upper_push"],
     exercises: [
-      { id: "db_shoulder_press", name: "Dumbbell Shoulder Press", contribution: 0.40, targetValue: 15, unit: "kg" },
-      { id: "lateral_raise", name: "Dumbbell Lateral Raise", contribution: 0.30, targetValue: 7.5, unit: "kg" },
-      { id: "rear_delt_fly", name: "Rear Delt Fly", contribution: 0.20, targetValue: 12.5, unit: "kg" },
-      { id: "face_pull", name: "Cable Face Pull", contribution: 0.10, targetValue: 20, unit: "kg" },
+      { id: "up_db_shoulder", name: "Dumbbell Shoulder Press", contribution: 0.40, targetValue: 30, unit: "kg" },
+      { id: "up_lat_raise", name: "Dumbbell Lateral Raise", contribution: 0.30, targetValue: 10, unit: "kg" },
+      { id: "up_tricep_pushdown", name: "Cable Triceps Pushdown", contribution: 0.20, targetValue: 40, unit: "kg" },
+      { id: "upl_face_pull", name: "Cable Face Pull", contribution: 0.10, targetValue: 40, unit: "kg" },
     ],
   },
   {
@@ -45,10 +47,10 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
     name: "Glutes & Hamstrings",
     tags: ["lower_body"],
     exercises: [
-      { id: "barbell_hip_thrust", name: "Barbell Hip Thrust", contribution: 0.40, targetValue: 80, unit: "kg" },
-      { id: "romanian_deadlift", name: "Romanian Deadlift", contribution: 0.35, targetValue: 50, unit: "kg" },
-      { id: "leg_curl", name: "Leg Curl", contribution: 0.15, targetValue: 35, unit: "kg" },
-      { id: "kettlebell_swing", name: "Kettlebell Swing", contribution: 0.10, targetValue: 20, unit: "kg" },
+      { id: "lb_hip_thrust", name: "Barbell Hip Thrust", contribution: 0.40, targetValue: 80, unit: "kg" },
+      { id: "lb_rdl", name: "Romanian Deadlift", contribution: 0.35, targetValue: 50, unit: "kg" },
+      { id: "lb_leg_curl", name: "Leg Curl", contribution: 0.15, targetValue: 45, unit: "kg" },
+      { id: "fb_kb_swing", name: "Kettlebell Swing", contribution: 0.10, targetValue: 50, unit: "kg" },
     ],
   },
   {
@@ -56,11 +58,11 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
     name: "Quads & Lower Body",
     tags: ["lower_body"],
     exercises: [
-      { id: "barbell_back_squat", name: "Barbell Back Squat", contribution: 0.45, targetValue: 60, unit: "kg" },
-      { id: "goblet_squat", name: "Goblet Squat", contribution: 0.20, targetValue: 30, unit: "kg" },
-      { id: "hip_adductor", name: "Hip Adductor", contribution: 0.15, targetValue: 45, unit: "kg" },
-      { id: "standing_calf_raise", name: "Standing Calf Raise", contribution: 0.10, targetValue: 30, unit: "kg" },
-      { id: "deep_squat_hold", name: "Deep Squat Hold", contribution: 0.10, targetValue: 60, unit: "sec" },
+      { id: "lb_squat", name: "Barbell Back Squat", contribution: 0.45, targetValue: 80, unit: "kg" },
+      { id: "lb_adductor", name: "Hip Adductor", contribution: 0.20, targetValue: 45, unit: "kg" },
+      { id: "lb_calf_raise", name: "Standing Calf Raise", contribution: 0.15, targetValue: 30, unit: "kg" },
+      { id: "lb_abductor", name: "Hip Abductor", contribution: 0.10, targetValue: 50, unit: "kg" },
+      { id: "day_deep_squat", name: "Horse Stance Hold", contribution: 0.10, targetValue: 60, unit: "sec" },
     ],
   },
   {
@@ -68,15 +70,11 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
     name: "Core & Posture",
     tags: ["core_a", "core_b", "posture"],
     exercises: [
-      { id: "cable_crunch", name: "Cable Crunch", contribution: 0.20, targetValue: 40, unit: "kg" },
-      { id: "lying_leg_raise", name: "Lying Leg Raise", contribution: 0.15, targetValue: 15, unit: "reps" },
-      { id: "side_leg_lowers", name: "Slow Side-to-Side Leg Lowers", contribution: 0.15, targetValue: 15, unit: "reps" },
-      { id: "russian_twist", name: "Russian Twist", contribution: 0.10, targetValue: 20, unit: "reps" },
-      { id: "bird_dog", name: "Bird Dog", contribution: 0.10, targetValue: 15, unit: "reps" },
-      { id: "plank", name: "Plank", contribution: 0.10, targetValue: 120, unit: "sec" },
-      { id: "farmer_carry", name: "Farmer Carry", contribution: 0.10, targetValue: 30, unit: "steps" },
-      { id: "suitcase_carry", name: "Suitcase Carry", contribution: 0.05, targetValue: 30, unit: "steps" },
-      { id: "wall_angels", name: "Wall Angels", contribution: 0.05, targetValue: 20, unit: "reps" },
+      { id: "ca_cable_crunch", name: "Cable Crunch", contribution: 0.20, targetValue: 80, unit: "kg" },
+      { id: "day_chin_tuck", name: "Chin Tucks", contribution: 0.15, targetValue: 15, unit: "reps" },
+      { id: "day_wall_angels", name: "Wall Angels", contribution: 0.15, targetValue: 20, unit: "reps" },
+      { id: "day_farmer_carry", name: "Farmer Carry", contribution: 0.10, targetValue: 50, unit: "steps" },
+      { id: "day_deep_squat", name: "Horse Stance Hold", contribution: 0.10, targetValue: 60, unit: "sec" },
     ],
   },
 ];
@@ -84,6 +82,16 @@ const MUSCLE_DEFINITIONS: MuscleGroupConfig[] = [
 interface ProcessedGroup extends MuscleGroupConfig {
   developmentIndex: number;
   contributors: { name: string; progressPct: number; current: number; target: number; unit: string }[];
+}
+
+function getMetricValue(set: any, exerciseType?: string) {
+  if (exerciseType === "time") {
+    return Number(set.durationSec ?? set.timeSeconds ?? 0);
+  }
+  if (exerciseType === "weight_reps") {
+    return Number(set.weightKg ?? set.weight ?? 0);
+  }
+  return Number(set.reps ?? 0);
 }
 
 export default function MuscleMap() {
@@ -101,13 +109,19 @@ export default function MuscleMap() {
         sessions.forEach((session: any) => {
           if (session.exercises) {
             session.exercises.forEach((item: any) => {
-              const exId = item.exerciseId;
+              const resolvedExId = resolveExerciseId(item.exerciseId, item.exerciseName ?? item.name);
+              if (!resolvedExId) return;
+
               const sets = item.sets || [];
+              const definition = EXERCISE_DATABASE.find((exercise) => exercise.id === resolvedExId);
+
               sets.forEach((set: any) => {
-                const val = set.weightKg || set.timeSeconds || set.reps || 0;
-                const existing = maxPerformanceMap.get(exId) || 0;
+                if (set.completed === false) return;
+                const val = getMetricValue(set, definition?.type);
+                if (val <= 0) return;
+                const existing = maxPerformanceMap.get(resolvedExId) || 0;
                 if (val > existing) {
-                  maxPerformanceMap.set(exId, val);
+                  maxPerformanceMap.set(resolvedExId, val);
                 }
               });
             });
@@ -117,7 +131,8 @@ export default function MuscleMap() {
         const calculated = MUSCLE_DEFINITIONS.map((group) => {
           let muscleDevelopmentIndex = 0;
           const contributors = group.exercises.map((ex) => {
-            let currentVal = maxPerformanceMap.get(ex.id) || 0;
+            const resolvedExId = resolveExerciseId(ex.id, ex.name);
+            let currentVal = resolvedExId ? (maxPerformanceMap.get(resolvedExId) || 0) : 0;
             if (currentVal === 0) {
               maxPerformanceMap.forEach((val, key) => {
                 if (key.toLowerCase().includes(ex.id.toLowerCase()) || ex.id.toLowerCase().includes(key.toLowerCase())) {

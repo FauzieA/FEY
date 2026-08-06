@@ -2,60 +2,101 @@ import { db } from "@/db/dexie";
 import { syncService } from "@/services/syncService";
 import { logActivity } from "@/services/xpService";
 import { today } from "@/utils/date";
+import { generateUUID } from "@/utils/uuid";
 import type { CycleLog, HealthNote, Measurement, SleepLog, WeightLog } from "@/types/modules";
 
 export const HealthRepository = {
-  async logWeight(entry: Omit<WeightLog, "id">): Promise<void> {
-    await db.weights.add(entry);
+  async logWeight(entry: Omit<WeightLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: WeightLog = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    await db.weights.add(record);
     await logActivity("weight_logged", { date: entry.date });
-    syncService.queueSync('weight', entry);
+    syncService.queueSync('weight', record, 'create');
   },
 
-  async addMeasurement(entry: Omit<Measurement, "id">): Promise<void> {
-    await db.measurements.add(entry);
+  async addMeasurement(entry: Omit<Measurement, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: Measurement = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    await db.measurements.add(record);
     await logActivity("measurement_logged", { date: entry.date });
-    syncService.queueSync('measurement', entry);
+    syncService.queueSync('measurement', record, 'create');
   },
 
-  async logSleep(entry: Omit<SleepLog, "id">): Promise<void> {
-    await db.sleepLogs.add(entry);
+  async logSleep(entry: Omit<SleepLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: SleepLog = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    await db.sleepLogs.add(record);
     await logActivity("sleep_logged", { date: entry.date });
-    syncService.queueSync('sleep', entry);
+    syncService.queueSync('sleep', record, 'create');
   },
 
-  async startCycle(entry: Omit<CycleLog, "id">): Promise<void> {
-    await db.cycleLogs.add(entry);
+  async startCycle(entry: Omit<CycleLog, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: CycleLog = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    await db.cycleLogs.add(record);
     await logActivity("cycle_logged", { date: entry.startDate });
-    syncService.queueSync('cycle', entry);
+    syncService.queueSync('cycle', record, 'create');
   },
 
-  async endCycle(id: number, endDate = today()): Promise<void> {
-    await db.cycleLogs.update(id, { endDate });
+  async endCycle(id: string, endDate = today()): Promise<void> {
+    await db.cycleLogs.update(id, { endDate, updatedAt: today(), syncStatus: 'pending' });
     syncService.queueSync('cycle', { id, endDate });
   },
 
-  async addHealthNote(entry: Omit<HealthNote, "id">): Promise<void> {
-    await db.healthNotes.add(entry);
+  async addHealthNote(entry: Omit<HealthNote, "id" | "createdAt" | "updatedAt" | "syncStatus">): Promise<void> {
+    const record: HealthNote = {
+      id: generateUUID(),
+      ...entry,
+      createdAt: today(),
+      updatedAt: today(),
+      syncStatus: 'pending',
+    };
+
+    await db.healthNotes.add(record);
     await logActivity("health_note", { date: entry.date });
-    syncService.queueSync('health_note', entry);
+    syncService.queueSync('health_note', record, 'create');
   },
 
-  async remove(table: "weights" | "sleepLogs" | "measurements" | "healthNotes", id: number): Promise<void> {
+  async remove(table: "weights" | "sleepLogs" | "measurements" | "healthNotes", id: string): Promise<void> {
     await db[table].delete(id);
     syncService.queueSync('delete', { table, id });
   },
 
-  async removeCycle(id: number): Promise<void> {
+  async removeCycle(id: string): Promise<void> {
     await db.cycleLogs.delete(id);
     syncService.queueSync('delete_cycle', id);
   },
 
-  async updateCycle(id: number, startDate: string, endDate?: string): Promise<void> {
+  async updateCycle(id: string, startDate: string, endDate?: string): Promise<void> {
     if (endDate) {
-      await db.cycleLogs.update(id, { startDate, endDate });
+      await db.cycleLogs.update(id, { startDate, endDate, updatedAt: today(), syncStatus: 'pending' });
       syncService.queueSync('cycle', { id, startDate, endDate });
     } else {
-      await db.cycleLogs.update(id, { startDate });
+      await db.cycleLogs.update(id, { startDate, updatedAt: today(), syncStatus: 'pending' });
       syncService.queueSync('cycle', { id, startDate });
     }
   },

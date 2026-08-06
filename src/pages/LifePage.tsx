@@ -186,7 +186,7 @@ function RemindersTab() {
     .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
     .slice(0, 8);
 
-  const nameFor = (personId: number) => snapshot.people.find((person) => person.id === personId)?.name ?? "Someone";
+  const nameFor = (personId: string) => snapshot.people.find((person) => person.id === personId)?.name ?? "Someone";
 
   return (
     <div className="space-y-6">
@@ -196,7 +196,7 @@ function RemindersTab() {
           onSubmit={async () => {
             if (!form.personId) return;
             await LifeRepository.addReminder({
-              personId: Number(form.personId),
+              personId: form.personId,
               dueDate: form.dueDate,
               note: form.note || undefined,
               completedAt: null,

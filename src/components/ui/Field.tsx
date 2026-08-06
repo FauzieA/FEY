@@ -29,7 +29,26 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${controlStyles} ${props.className ?? ""}`} />;
+  const handleBlur = (e: React.FocusEvent<HTMLSelectElement>) => {
+    props.onBlur?.(e);
+    // Auto zoom out after editing on mobile
+    if (document.activeElement !== e.target) {
+      document.body.style.zoom = "1";
+    }
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLSelectElement>) => {
+    props.onFocus?.(e);
+  };
+
+  return (
+    <select
+      {...props}
+      onBlur={handleBlur}
+      onFocus={handleFocus}
+      className={`${controlStyles} ${props.className ?? ""}`}
+    />
+  );
 }
 
 interface CheckRowProps {

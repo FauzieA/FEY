@@ -4,12 +4,48 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
 import { db } from "@/db/dexie";
 import { TrainingRepository } from "@/repositories/trainingRepository";
+import { generateUUID } from "@/utils/uuid";
 import { Check } from "lucide-react";
 
 import WorkoutHeader from "@/components/workout/WorkoutHeader";
 import RestTimerBar from "@/components/workout/RestTimerBar";
 import SetsTable, {type SetItem } from "@/components/workout/SetsTable";
 import ExerciseNotes from "@/components/workout/ExerciseNotes";
+
+function parseRepRange(repRange: string) {
+  const match = repRange.match(/(\d+)(?:-(\d+))?/);
+  if (!match) return 10;
+  const low = Number(match[1]);
+  const high = match[2] ? Number(match[2]) : low;
+  return Math.max(low, high, 10);
+}
+
+function getExerciseHistoryDefaults(exercise: typeof EXERCISE_DATABASE[number], logs: any[]) {
+  const sets = logs.flatMap((session) =>
+    (session.exercises ?? [])
+      .filter((exerciseEntry: any) => exerciseEntry.exerciseId === exercise.id)
+      .flatMap((exerciseEntry: any) => exerciseEntry.sets ?? [])
+  );
+
+  const highestWeightKg = Math.max(
+    exercise.defaultWeightKg ?? 0,
+    ...sets.map((set: any) => set.weightKg ?? set.weight ?? 0)
+  );
+  const highestReps = Math.max(
+    parseRepRange(exercise.repRange),
+    ...sets.map((set: any) => set.reps ?? 0)
+  );
+  const highestDurationSec = Math.max(
+    exercise.defaultTimeSeconds ?? 0,
+    ...sets.map((set: any) => set.durationSec ?? 0)
+  );
+
+  return {
+    weightKg: highestWeightKg,
+    reps: highestReps,
+    durationSec: Math.max(highestDurationSec, 10),
+  };
+}
 
 export default function WorkoutPage() {
   const [searchParams] = useSearchParams();
@@ -29,14 +65,23 @@ export default function WorkoutPage() {
   const todayStr = useMemo(() => new Date().toDateString(), []);
 
   const existingLog = useLiveQuery(async () => {
-    const logs = await db.sessions
-      .where("id")
-      .startsWith(`session_${exercise.id}_`)
-      .toArray();
+    const logs = await db.sessions.toArray();
     return logs.find(
-      (l) => new Date(l.completedAt).toDateString() === todayStr
+      (l) =>
+        new Date(l.completedAt).toDateString() === todayStr &&
+        Array.isArray(l.exercises) &&
+        l.exercises.some((ex) => ex.exerciseId === exercise.id)
     );
   }, [exercise.id, todayStr]);
+
+  const exerciseLogs = useLiveQuery(async () => {
+    const logs = await db.sessions.toArray();
+    return logs.filter(
+      (l) =>
+        Array.isArray(l.exercises) &&
+        l.exercises.some((ex) => ex.exerciseId === exercise.id)
+    );
+  }, [exercise.id]);
 
   const [sets, setSets] = useState<SetItem[]>(() => {
     const count = exercise.defaultSets || 3;
@@ -62,19 +107,24 @@ export default function WorkoutPage() {
   const [isRestActive, setIsRestActive] = useState(false);
 
   useEffect(() => {
-    if (!existingLog) {
-      const count = exercise.defaultSets || 3;
-      setSets(
-        Array.from({ length: count }, (_, i) => ({
-          setNum: i + 1,
-          weightKg: exercise.defaultWeightKg || 0,
-          reps: 10,
-          durationSec: exercise.defaultTimeSeconds || 10,
-          completed: false,
-        }))
-      );
-    }
-  }, [exercise, existingLog]);
+    if (existingLog || !exerciseLogs) return;
+
+    const bestDefaults = getExerciseHistoryDefaults(exercise, exerciseLogs);
+    const count = exercise.defaultSets || 3;
+
+    setSets(
+      Array.from({ length: count }, (_, i) => ({
+        setNum: i + 1,
+        weightKg: bestDefaults.weightKg,
+        reps: bestDefaults.reps,
+        durationSec:
+          exercise.type === "time"
+            ? bestDefaults.durationSec
+            : exercise.defaultTimeSeconds || 10,
+        completed: false,
+      }))
+    );
+  }, [exercise, existingLog, exerciseLogs]);
 
   useEffect(() => {
     if (existingLog?.exercises?.[0]?.sets) {
@@ -185,20 +235,18 @@ export default function WorkoutPage() {
 
   const handleFinishSession = async () => {
     try {
-      const totalVolume = sets.reduce(
-        (acc, s) => acc + (s.completed ? s.weightKg * s.reps : 0),
-        0
-      );
-      const dateKey = new Date().toISOString().slice(0, 10);
-      const sessionId = `session_${exercise.id}_${dateKey}`;
+      const sessionId = generateUUID();
 
+      const now = new Date().toISOString();
       await TrainingRepository.saveSession({
         id: sessionId,
         planTitle: exercise.name,
         completedAt: new Date().toISOString(),
         durationMinutes: 5,
-        totalVolumeKg: totalVolume,
         xpEarned: 100,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'pending',
         exercises: [
           {
             exerciseId: exercise.id,
@@ -263,7 +311,7 @@ export default function WorkoutPage() {
         className="w-full bg-[#6B2D3A] text-[#F8F5F2] hover:bg-[#58242F] font-serif text-sm sm:text-base py-3.5 sm:py-4 rounded-2xl sm:rounded-3xl shadow-lg shadow-[#6B2D3A]/20 transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2"
       >
         <Check className="w-5 h-5" />
-        <span>Complete Exercise Session</span>
+        <span>Complete Workout Day</span>
       </button>
     </div>
   );

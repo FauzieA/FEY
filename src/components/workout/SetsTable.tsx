@@ -59,7 +59,7 @@ export default function SetsTable({
               )}
 
               <div
-                className={`flex items-center justify-between gap-2 p-3 rounded-2xl border transition-all ${
+                className={`flex flex-row flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border transition-all ${
                   st.completed
                     ? "bg-[#F2E8EA]/60 border-[#6B2D3A] text-[#1A1817]"
                     : isTimerRunning
@@ -67,20 +67,26 @@ export default function SetsTable({
                     : "bg-[#F8F5F2] border-[#EAE3DE] text-[#1A1817]"
                 }`}
               >
-                <span className="font-serif font-bold text-xs sm:text-sm shrink-0 w-10">
+                <span className="font-serif font-bold text-sm sm:text-base shrink-0 mr-3">
                   Set {st.setNum}
                 </span>
 
-                <div className="flex items-center justify-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 flex-1 min-w-0">
                   {exerciseType === "weight_reps" && (
                     <div className="flex items-center gap-1 bg-white border border-[#EAE3DE] rounded-xl px-2 py-1 shrink-0">
                       <input
                         type="number"
                         step="any"
+                        inputMode="decimal"
                         value={st.weightKg}
                         onChange={(e) =>
                           onUpdateSet(idx, "weightKg", parseFloat(e.target.value) || 0)
                         }
+                        onBlur={(e) => {
+                          if (document.activeElement !== e.target) {
+                            document.body.style.zoom = "1";
+                          }
+                        }}
                         className="w-12 text-center font-mono text-xs sm:text-sm font-bold bg-transparent focus:outline-none text-[#1A1817]"
                       />
                       <span className="text-[11px] text-[#8C7B75] font-medium">kg</span>
@@ -88,19 +94,21 @@ export default function SetsTable({
                   )}
 
                   {exerciseType !== "time" && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0 min-w-[120px]">
                       <button
                         onClick={() => onUpdateSet(idx, "reps", st.reps - 1)}
-                        className="w-6 h-6 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer shrink-0"
+                        aria-label="Decrease reps"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="font-mono text-xs sm:text-sm font-bold min-w-[32px] text-center">
-                        {st.reps}reps
+                      <span className="font-mono text-sm sm:text-base font-bold min-w-[44px] text-center px-1">
+                        {st.reps} reps
                       </span>
                       <button
                         onClick={() => onUpdateSet(idx, "reps", st.reps + 1)}
-                        className="w-6 h-6 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border bg-white flex items-center justify-center text-[#8C7B75] active:scale-90 cursor-pointer shrink-0"
+                        aria-label="Increase reps"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
@@ -155,22 +163,22 @@ export default function SetsTable({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <button
                     onClick={() => onToggleSet(idx)}
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                       st.completed
                         ? "bg-[#6B2D3A] text-white shadow-sm"
                         : "border bg-white text-transparent"
                     }`}
                   >
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
                   </button>
 
                   {sets.length > 1 && (
                     <button
                       onClick={() => onRemoveSet(idx)}
-                      className="p-1 text-[#8C7B75] hover:text-[#6B2D3A] transition-colors cursor-pointer"
+                      className="p-1 text-[#8C7B75] hover:text-[#6B2D3A] transition-colors cursor-pointer shrink-0"
                       title="Remove Set"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

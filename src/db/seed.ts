@@ -35,6 +35,9 @@ async function runInitialization() {
       defaultRestSeconds: 90,
       soundEnabled: true,
       vibrationEnabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      syncStatus: "pending",
     });
   }
 }

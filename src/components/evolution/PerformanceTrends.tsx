@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { 
-  TrendingUp, 
   ChevronDown, 
   Activity, 
   Award, 
   Sparkles 
 } from "lucide-react";
+import { useFeySnapshot } from "@/hooks/useFeySnapshot";
 import { 
   LineChart, 
   Line, 
@@ -15,8 +15,8 @@ import {
   ResponsiveContainer, 
   CartesianGrid 
 } from "recharts";
-import { db } from "@/db/dexie";
 import { EXERCISE_DATABASE } from "@/db/workoutData";
+import { resolveExerciseDefinition } from "@/utils/exerciseMatching";
 
 interface ExerciseOption {
   id: string;
@@ -43,16 +43,25 @@ interface BalanceCategory {
   label: string;
 }
 
+const BASELINE_START_VALUES: Record<string, number> = {
+  lb_hip_thrust: 15,
+  lb_squat: 10,
+  lb_rdl: 5,
+  up_db_shoulder: 5,
+  up_lat_raise:2,
+  lb_adductor: 15,
+  lb_calf_raise: 5,
+  fb_kb_swing: 6,
+};
+
 export default function PerformanceTrends() {
+  const snapshot = useFeySnapshot();
+
   // Graph 1 State: Strength Progression
   const [exerciseOptions, setExerciseOptions] = useState<ExerciseOption[]>([]);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
   const [progressionData, setProgressionData] = useState<ProgressionPoint[]>([]);
   const [isExerciseDropdownOpen, setIsExerciseDropdownOpen] = useState(false);
-
-  // Graph 2 State: Estimated 1RM
-  const [estimated1RMData, setEstimated1RMData] = useState<{ date: string; est1rm: number }[]>([]);
-  const [est1RMExerciseName, setEst1RMExerciseName] = useState<string>("Bench Press");
 
   // Graph 4 State: Movement Balance
   const [balanceData, setBalanceData] = useState<BalanceCategory[]>([]);
@@ -63,18 +72,17 @@ export default function PerformanceTrends() {
   useEffect(() => {
     async function loadAnalytics() {
       try {
-        const sessions = await db.sessions.toArray();
+        const sessions = snapshot.sessions;
 
         // 1. Extract unique exercises performed across all sessions
         const exerciseMap = new Map<string, string>();
         sessions.forEach((s: any) => {
           if (s.exercises) {
             s.exercises.forEach((item: any) => {
-              if (item.exerciseId) {
-                const def = EXERCISE_DATABASE.find((e) => e.id === item.exerciseId);
-                const name = def ? def.name : (item.name || item.exerciseId);
-                exerciseMap.set(item.exerciseId, name);
-              }
+              const def = resolveExerciseDefinition(item.exerciseId, item.exerciseName ?? item.name);
+              if (!def || def.type !== "weight_reps") return;
+              const name = def.name;
+              exerciseMap.set(def.id, name);
             });
           }
         });
@@ -89,12 +97,14 @@ export default function PerformanceTrends() {
         const defaultExId = options.length > 0 ? options[0].id : "";
         if (defaultExId && !selectedExerciseId) {
           setSelectedExerciseId(defaultExId);
+        } else if (selectedExerciseId && !options.some((option) => option.id === selectedExerciseId)) {
+          setSelectedExerciseId(options[0]?.id ?? "");
         }
 
         // 2. Parse sessions into chronological timeline for Graph 1 & 5
         const sortedSessions = [...sessions].sort((a: any, b: any) => {
-          const dateA = new Date(a.timestamp || a.startTime || 0).getTime();
-          const dateB = new Date(b.timestamp || b.startTime || 0).getTime();
+          const dateA = new Date(a.completedAt ?? a.startedAt ?? 0).getTime();
+          const dateB = new Date(b.completedAt ?? b.startedAt ?? 0).getTime();
           return dateA - dateB;
         });
 
@@ -103,21 +113,24 @@ export default function PerformanceTrends() {
         const timelineList: TimelineEvent[] = [];
 
         sortedSessions.forEach((session: any) => {
-          const rawDate = session.timestamp || session.startTime || Date.now();
+          const rawDate = session.completedAt ?? session.startedAt ?? new Date().toISOString();
           const d = new Date(rawDate);
           const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
           const timestamp = d.getTime();
 
           if (session.exercises) {
             session.exercises.forEach((item: any) => {
-              const def = EXERCISE_DATABASE.find((e) => e.id === item.exerciseId);
-              const exName = def ? def.name : (item.name || item.exerciseId);
+              const def = resolveExerciseDefinition(item.exerciseId, item.exerciseName ?? item.name);
+              if (!def || def.tier !== "weekly") return;
+
+              const exName = def.name;
               const sets = item.sets || [];
 
               sets.forEach((set: any) => {
-                const weight = set.weightKg || 0;
-                const reps = set.reps || 0;
-                const time = set.timeSeconds || 0;
+                if (set.completed === false) return;
+                const weight = Number(set.weightKg ?? set.weight ?? 0);
+                const reps = Number(set.reps ?? 0);
+                const time = Number(set.durationSec ?? set.timeSeconds ?? 0);
                 
                 const magnitude = weight > 0 ? weight : (reps > 0 ? reps : time);
                 const unit = weight > 0 ? "kg" : (time > 0 ? "sec" : "reps");
@@ -161,7 +174,8 @@ export default function PerformanceTrends() {
             session.exercises.forEach((item: any) => {
               const def = EXERCISE_DATABASE.find((e) => e.id === item.exerciseId);
               const cat = def ? def.category : "";
-              const setsLen = (item.sets || []).length;
+              const completedSets = (item.sets || []).filter((set: any) => set.completed !== false);
+              const setsLen = completedSets.length;
 
               if (cat.includes("push")) pushCount += setsLen;
               else if (cat.includes("pull") || cat.includes("grip")) pullCount += setsLen;
@@ -186,7 +200,7 @@ export default function PerformanceTrends() {
     }
 
     loadAnalytics();
-  }, []);
+  }, [snapshot.sessions]);
 
   // Update Graph 1 and Graph 2 when selectedExerciseId changes
   useEffect(() => {
@@ -194,91 +208,79 @@ export default function PerformanceTrends() {
 
     async function loadExerciseProgression() {
       try {
-        const sessions = await db.sessions.toArray();
+        const sessions = snapshot.sessions;
         const sortedSessions = [...sessions].sort((a: any, b: any) => {
-          const dateA = new Date(a.timestamp || a.startTime || 0).getTime();
-          const dateB = new Date(b.timestamp || b.startTime || 0).getTime();
+          const dateA = new Date(a.completedAt ?? a.startedAt ?? 0).getTime();
+          const dateB = new Date(b.completedAt ?? b.startedAt ?? 0).getTime();
           return dateA - dateB;
         });
 
         const points: ProgressionPoint[] = [];
-        const est1rmPoints: { date: string; est1rm: number }[] = [];
-        
+
         const def = EXERCISE_DATABASE.find((e) => e.id === selectedExerciseId);
-        if (def) setEst1RMExerciseName(def.name);
+        if (!def || def.type !== "weight_reps") {
+          setProgressionData([]);
+          return;
+        }
+
+        const baselineValue = BASELINE_START_VALUES[selectedExerciseId] ?? def.defaultWeightKg ?? 0;
+        if (baselineValue > 0) {
+          points.push({
+            date: "Beginning",
+            value: baselineValue,
+            weight: baselineValue,
+            reps: 0,
+          });
+        }
 
         sortedSessions.forEach((session: any) => {
-          const rawDate = session.timestamp || session.startTime || Date.now();
+          const rawDate = session.completedAt ?? session.startedAt ?? new Date().toISOString();
           const dateStr = new Date(rawDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
           if (session.exercises) {
             session.exercises.forEach((item: any) => {
-              if (item.exerciseId === selectedExerciseId) {
-                const sets = item.sets || [];
-                let bestWeight = 0;
-                let bestReps = 0;
-                let bestVal = 0;
+              const matched = resolveExerciseDefinition(item.exerciseId, item.exerciseName ?? item.name);
+              if (!matched || matched.id !== selectedExerciseId) return;
 
-                sets.forEach((set: any) => {
-                  const w = set.weightKg || 0;
-                  const r = set.reps || 0;
-                  const score = w > 0 ? w : r;
-                  if (score > bestVal) {
-                    bestVal = score;
-                    bestWeight = w;
-                    bestReps = r;
-                  }
-                });
+              const sets = item.sets || [];
+              let bestWeight = 0;
+              let bestReps = 0;
 
-                if (bestVal > 0) {
-                  points.push({
-                    date: dateStr,
-                    value: bestVal,
-                    weight: bestWeight,
-                    reps: bestReps,
-                  });
-
-                  if (bestWeight > 0 && bestReps > 0) {
-                    const e1rm = Math.round(bestWeight * (1 + bestReps / 30));
-                    est1rmPoints.push({ date: dateStr, est1rm: e1rm });
-                  } else if (bestWeight > 0) {
-                    est1rmPoints.push({ date: dateStr, est1rm: bestWeight });
-                  }
+              sets.forEach((set: any) => {
+                if (set.completed === false) return;
+                const w = Number(set.weightKg ?? set.weight ?? 0);
+                const r = Number(set.reps ?? 0);
+                if (w > bestWeight) {
+                  bestWeight = w;
+                  bestReps = r;
                 }
+              });
+
+              if (bestWeight > 0) {
+                points.push({
+                  date: dateStr,
+                  value: bestWeight,
+                  weight: bestWeight,
+                  reps: bestReps,
+                });
               }
             });
           }
         });
 
         setProgressionData(points);
-        setEstimated1RMData(est1rmPoints.length > 0 ? est1rmPoints : points.map(p => ({ date: p.date, est1rm: p.value })));
       } catch (err) {
         console.error("Error loading exercise progression:", err);
       }
     }
 
     loadExerciseProgression();
-  }, [selectedExerciseId, exerciseOptions]);
+  }, [selectedExerciseId, exerciseOptions, snapshot.sessions]);
 
   const selectedExerciseObj = exerciseOptions.find((e) => e.id === selectedExerciseId);
 
   return (
     <div className="space-y-6">
-      {/* SECTION TITLE INTRO */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-[#EAE3DE] shadow-xs flex items-center justify-between">
-        <div>
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#8C7B75] block">
-            Performance Analytics
-          </span>
-          <h2 className="font-serif font-bold text-xl text-[#1A1817] mt-0.5">
-            What direction is my body moving?
-          </h2>
-        </div>
-        <div className="w-10 h-10 rounded-2xl bg-[#FAF8F6] border border-[#EAE3DE] flex items-center justify-center text-[#6B2D3A]">
-          <TrendingUp className="w-5 h-5" />
-        </div>
-      </div>
-
       {/* ================= GRAPH 1: STRENGTH PROGRESSION ================= */}
       <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-[#EAE3DE] shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F8F5F2] pb-4">
@@ -361,7 +363,7 @@ export default function PerformanceTrends() {
                       fontSize: "12px",
                       padding: "10px 14px",
                     }}
-                    formatter={(val: any) => [`${val} units`, "Peak Output"]}
+                    formatter={(val: any) => [`${val} kg`, "Weight"]}
                   />
                   <Line
                     type="monotone"
@@ -377,66 +379,6 @@ export default function PerformanceTrends() {
               <div className="h-full flex flex-col items-center justify-center text-center text-xs text-[#8C7B75]">
                 <Activity className="w-8 h-8 text-[#D9B7BE] mb-2" />
                 <span>No historical logs found for this exercise. Try logging a workout session!</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ================= GRAPH 2: ESTIMATED STRENGTH (1RM) ================= */}
-      <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-[#EAE3DE] shadow-xs space-y-5">
-        <div className="border-b border-[#F8F5F2] pb-4">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C7B75] block">
-            Graph 2 • Standardized Metric
-          </span>
-          <h3 className="font-serif font-bold text-lg text-[#1A1817]">
-            Estimated Strength (1RM) — {est1RMExerciseName}
-          </h3>
-          <p className="text-xs text-[#8C7B75] mt-0.5">
-            Normalized via working set formulas so you can compare progress across changing rep ranges
-          </p>
-        </div>
-
-        <div className="bg-[#FAF8F6]/50 border border-[#EAE3DE]/60 rounded-2xl p-4 pt-5">
-          <div className="h-[220px] w-full">
-            {estimated1RMData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={estimated1RMData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EAE3DE" opacity={0.6} />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#8C7B75", fontSize: 11, fontFamily: "monospace" }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: "#8C7B75", fontSize: 11, fontFamily: "monospace" }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1A1817",
-                      borderRadius: "16px",
-                      border: "none",
-                      color: "#FFFFFF",
-                      fontSize: "12px",
-                      padding: "10px 14px",
-                    }}
-                    formatter={(val: any) => [`${val} kg`, "Estimated 1RM"]}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="est1rm"
-                    stroke="#2E6B40"
-                    strokeWidth={3}
-                    dot={{ fill: "#2E6B40", r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-[#8C7B75]">
-                <span>Log weighted sets to generate estimated 1RM projections.</span>
               </div>
             )}
           </div>
