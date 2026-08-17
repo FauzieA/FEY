@@ -5,6 +5,7 @@ import type {
   Book,
   CallReminder,
   CycleLog,
+  Debt,
   HealthNote,
   JournalEntry,
   Measurement,
@@ -163,6 +164,7 @@ class FeyDatabase extends Dexie {
   savingsEntries!: Dexie.Table<SavingsEntry, string>;
   savingsGoals!: Dexie.Table<SavingsGoal, string>;
   purchasePlans!: Dexie.Table<PurchasePlan, string>;
+  debts!: Dexie.Table<Debt, string>;
   wealthProfile!: Dexie.Table<WealthProfile, string>;
 
   /* Life */
@@ -210,6 +212,7 @@ class FeyDatabase extends Dexie {
       savingsEntries: "id, date, goalId",
       savingsGoals: "id, name",
       purchasePlans: "id, priority, purchasedAt",
+      debts: "id, dueDate, paidFromSavings",
       wealthProfile: "id",
 
       journalEntries: "id, date",

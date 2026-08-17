@@ -273,6 +273,16 @@ export interface PurchasePlan extends SyncMetadata {
   notes?: string;
 }
 
+export interface Debt extends SyncMetadata {
+  name: string;
+  amount: number;
+  interestRate: number;
+  monthlyPayment: number;
+  dueDate?: string | null;
+  paidFromSavings: boolean;
+  notes?: string;
+}
+
 export interface WealthProfile extends SyncMetadata {
   currency: string;
   hourlyRate: number;

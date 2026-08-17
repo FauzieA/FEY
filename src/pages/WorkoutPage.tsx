@@ -235,16 +235,16 @@ export default function WorkoutPage() {
 
   const handleFinishSession = async () => {
     try {
-      const sessionId = generateUUID();
-
       const now = new Date().toISOString();
+      const sessionId = existingLog?.id || generateUUID();
+
       await TrainingRepository.saveSession({
         id: sessionId,
         planTitle: exercise.name,
         completedAt: new Date().toISOString(),
         durationMinutes: 5,
         xpEarned: 100,
-        createdAt: now,
+        createdAt: existingLog?.createdAt || now,
         updatedAt: now,
         syncStatus: 'pending',
         exercises: [

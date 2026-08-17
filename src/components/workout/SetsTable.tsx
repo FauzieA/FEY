@@ -50,7 +50,7 @@ export default function SetsTable({
           const isTargetReached = targetReachedSet === idx;
 
           return (
-            <div key={st.setNum} className="space-y-1">
+            <div key={idx} className="space-y-1">
               {isTargetReached && isTimerRunning && (
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#6B2D3A] bg-[#F2E8EA] px-3 py-1 rounded-xl animate-bounce w-fit mx-auto shadow-xs">
                   <Sparkles className="w-3.5 h-3.5 text-[#6B2D3A]" />

@@ -227,6 +227,9 @@ class SyncService {
       case 'purchase_plan':
         await this.syncPurchasePlanItem(action, data);
         break;
+      case 'debt':
+        await this.syncDebtItem(action, data);
+        break;
       case 'wealth_profile':
         await this.syncWealthProfileItem(action, data);
         break;
@@ -247,6 +250,9 @@ class SyncService {
         break;
       case 'delete_purchase_plan':
         await this.syncDeletePurchasePlanItem(action, data);
+        break;
+      case 'delete_debt':
+        await this.syncDeleteDebtItem(action, data);
         break;
       case 'delete_perfume_formula':
         await this.syncDeletePerfumeFormulaItem(action, data);
@@ -325,12 +331,15 @@ class SyncService {
 
   private async syncPrayerItem(action: string, data: any) {
     if (action === 'update') {
+      const payload = { ...data };
+      delete payload.id;
+
       const logs = await api.get<any[]>('/salah/').catch(() => []);
       const existing = logs.find((l: any) => l.date === data.date);
       if (existing) {
-        await api.patch(`/salah/${existing.id}/`, data);
+        await api.patch(`/salah/${existing.id}/`, payload);
       } else {
-        await api.post('/salah/', data);
+        await api.post('/salah/', payload);
       }
     }
   }
@@ -410,15 +419,69 @@ class SyncService {
     }
   }
 
-  private async syncWeightItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/weight-logs/', data);
+  private async syncWeightItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/weight-logs/${data.id}/`, payload);
+        await db.weights.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/weight-logs/', payload);
+      await db.weights.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync weight log:', postError);
+      await db.weights.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncMeasurementItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/measurements/', data);
+  private async syncMeasurementItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/measurements/${data.id}/`, payload);
+        await db.measurements.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/measurements/', payload);
+      await db.measurements.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync measurement:', postError);
+      await db.measurements.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
@@ -446,6 +509,12 @@ class SyncService {
     }
   }
 
+  private async syncDeleteDebtItem(action: string, data: any) {
+    if (action === 'delete') {
+      await api.delete(`/debts/${data}/`);
+    }
+  }
+
   private async syncDeletePerfumeFormulaItem(action: string, data: any) {
     if (action === 'delete') {
       await api.delete(`/perfume-formulas/${data}/`);
@@ -466,77 +535,366 @@ class SyncService {
     }
   }
 
-  private async syncSleepItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/sleep-logs/', data);
+  private async syncSleepItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
     }
-  }
 
-  private async syncCycleItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/cycle-logs/', data);
-    } else if (action === 'update') {
-      const logs = await api.get<any[]>('/cycle-logs/').catch(() => []);
-      const existing = logs.find((l: any) => l.id === data.id);
-      if (existing) {
-        await api.patch(`/cycle-logs/${existing.id}/`, { endDate: data.endDate });
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/sleep-logs/${data.id}/`, payload);
+        await db.sleepLogs.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
       }
     }
-  }
 
-  private async syncHealthNoteItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/health-notes/', data);
+    try {
+      const response: any = await api.post('/sleep-logs/', payload);
+      await db.sleepLogs.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync sleep log:', postError);
+      await db.sleepLogs.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncBookItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/books/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/books/${data.id}/`, data);
+  private async syncCycleItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/cycle-logs/${data.id}/`, payload);
+        await db.cycleLogs.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/cycle-logs/', payload);
+      await db.cycleLogs.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync cycle log:', postError);
+      await db.cycleLogs.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncReadingSessionItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/reading-sessions/', data);
+  private async syncHealthNoteItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/health-notes/${data.id}/`, payload);
+        await db.healthNotes.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/health-notes/', payload);
+      await db.healthNotes.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync health note:', postError);
+      await db.healthNotes.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncPerfumeFormulaItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/perfume-formulas/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/perfume-formulas/${data.id}/`, data);
+  private async syncBookItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/books/${data.id}/`, payload);
+        await db.books.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/books/', payload);
+      await db.books.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync book:', postError);
+      await db.books.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncPerfumeVersionItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/perfume-versions/', data);
+  private async syncReadingSessionItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/reading-sessions/${data.id}/`, payload);
+        await db.readingSessions.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/reading-sessions/', payload);
+      await db.readingSessions.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync reading session:', postError);
+      await db.readingSessions.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncSavingsItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/savings-entries/', data);
+  private async syncPerfumeFormulaItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/perfume-formulas/${data.id}/`, payload);
+        await db.perfumeFormulas.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/perfume-formulas/', payload);
+      await db.perfumeFormulas.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync perfume formula:', postError);
+      await db.perfumeFormulas.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncSavingsGoalItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/savings-goals/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/savings-goals/${data.id}/`, data);
+  private async syncPerfumeVersionItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/perfume-versions/${data.id}/`, payload);
+        await db.perfumeVersions.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/perfume-versions/', payload);
+      await db.perfumeVersions.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync perfume version:', postError);
+      await db.perfumeVersions.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncPurchasePlanItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/purchase-plans/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/purchase-plans/${data.id}/`, data);
+  private async syncSavingsItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/savings-entries/${data.id}/`, payload);
+        await db.savingsEntries.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/savings-entries/', payload);
+      await db.savingsEntries.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync savings entry:', postError);
+      await db.savingsEntries.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncSavingsGoalItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/savings-goals/${data.id}/`, payload);
+        await db.savingsGoals.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/savings-goals/', payload);
+      await db.savingsGoals.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync savings goal:', postError);
+      await db.savingsGoals.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncDebtItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/debts/${data.id}/`, payload);
+        await db.debts.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/debts/', payload);
+      await db.debts.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync debt:', postError);
+      await db.debts.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncPurchasePlanItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/purchase-plans/${data.id}/`, payload);
+        await db.purchasePlans.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/purchase-plans/', payload);
+      await db.purchasePlans.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync purchase plan:', postError);
+      await db.purchasePlans.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
@@ -554,29 +912,135 @@ class SyncService {
     }
   }
 
-  private async syncJournalItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/journal-entries/', data);
+  private async syncJournalItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/journal-entries/${data.id}/`, payload);
+        await db.journalEntries.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/journal-entries/', payload);
+      await db.journalEntries.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync journal entry:', postError);
+      await db.journalEntries.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncPersonItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/people/', data);
+  private async syncPersonItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/people/${data.id}/`, payload);
+        await db.people.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/people/', payload);
+      await db.people.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync person:', postError);
+      await db.people.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncCallReminderItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/call-reminders/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/call-reminders/${data.id}/`, data);
+  private async syncCallReminderItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/call-reminders/${data.id}/`, payload);
+        await db.callReminders.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/call-reminders/', payload);
+      await db.callReminders.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync call reminder:', postError);
+      await db.callReminders.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
-  private async syncTimelineItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/timeline-events/', data);
+  private async syncTimelineItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/timeline-events/${data.id}/`, payload);
+        await db.timelineEvents.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/timeline-events/', payload);
+      await db.timelineEvents.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync timeline event:', postError);
+      await db.timelineEvents.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
@@ -626,45 +1090,168 @@ class SyncService {
     }
   }
 
-  private async syncQuranReadingItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/quran-reading/', data);
+  private async syncQuranReadingItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
     }
-  }
 
-  private async syncMemorizationItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/memorization-entries/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/memorization-entries/${data.id}/`, data);
-    }
-  }
-
-  private async syncRevisionItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/revisions/', data);
-    }
-  }
-
-  private async syncAdhkarItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/adhkar/', data);
-    } else if (action === 'update') {
-      const logs = await api.get<any[]>('/adhkar/').catch(() => []);
-      const existing = logs.find((l: any) => l.date === data.date);
-      if (existing) {
-        await api.patch(`/adhkar/${existing.id}/`, data);
-      } else {
-        await api.post('/adhkar/', data);
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/quran-reading/${data.id}/`, payload);
+        await db.quranReading.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
       }
     }
+
+    try {
+      const response: any = await api.post('/quran-reading/', payload);
+      await db.quranReading.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync quran reading:', postError);
+      await db.quranReading.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
   }
 
-  private async syncMissedFastItem(action: string, data: any) {
-    if (action === 'create') {
-      await api.post('/missed-fasts/', data);
-    } else if (action === 'update' && data.id) {
-      await api.patch(`/missed-fasts/${data.id}/`, data);
+  private async syncMemorizationItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/memorization-entries/${data.id}/`, payload);
+        await db.memorization.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/memorization-entries/', payload);
+      await db.memorization.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync memorization entry:', postError);
+      await db.memorization.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncRevisionItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/revisions/${data.id}/`, payload);
+        await db.revisions.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/revisions/', payload);
+      await db.revisions.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync revision:', postError);
+      await db.revisions.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncAdhkarItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/adhkar/${data.id}/`, payload);
+        await db.adhkarLogs.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/adhkar/', payload);
+      await db.adhkarLogs.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync adhkar:', postError);
+      await db.adhkarLogs.update(data.id, { syncStatus: 'failed' });
+      throw postError;
+    }
+  }
+
+  private async syncMissedFastItem(_action: string, data: any) {
+    const payload = { ...data };
+    const idIsValid = this.isUuid(data?.id);
+    if (payload.id && !idIsValid) {
+      delete payload.id;
+    }
+
+    if (idIsValid) {
+      try {
+        const response: any = await api.put(`/missed-fasts/${data.id}/`, payload);
+        await db.missedFasts.update(data.id, {
+          syncStatus: 'synced',
+          updatedAt: response.updated_at || data.updatedAt,
+        });
+        return;
+      } catch (error) {
+        // If the UUID path cannot be updated, fall back to create
+      }
+    }
+
+    try {
+      const response: any = await api.post('/missed-fasts/', payload);
+      await db.missedFasts.update(data.id, {
+        syncStatus: 'synced',
+        updatedAt: response.updated_at || data.updatedAt,
+      });
+    } catch (postError) {
+      console.error('Failed to sync missed fast:', postError);
+      await db.missedFasts.update(data.id, { syncStatus: 'failed' });
+      throw postError;
     }
   }
 
@@ -807,15 +1394,13 @@ class SyncService {
     
     try {
       const workouts = await api.get<any[]>('/workouts/').catch(() => []);
-      
-      for (const workout of workouts) {
-        const local = await db.sessions.get(workout.id);
-        const localUpdatedAt = local?.updatedAt;
-        const remoteUpdatedAt = workout.updatedAt;
-        const syncedWorkout = this.createSyncedRecord(workout);
+      const localWorkouts = await db.sessions.toArray();
+      const localWorkoutMap = new Map(localWorkouts.map((item: any) => [item.id, item]));
 
-        if (!local || (remoteUpdatedAt && localUpdatedAt && new Date(remoteUpdatedAt) > new Date(localUpdatedAt))) {
-          await db.sessions.put(syncedWorkout);
+      for (const workout of workouts) {
+        const existing = localWorkoutMap.get(workout.id);
+        if (!existing || existing.syncStatus !== 'pending') {
+          await db.sessions.put(this.createSyncedRecord(workout));
         }
       }
       
