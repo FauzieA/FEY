@@ -227,9 +227,7 @@ class SyncService {
       case 'purchase_plan':
         await this.syncPurchasePlanItem(action, data);
         break;
-      case 'debt':
-        await this.syncDebtItem(action, data);
-        break;
+
       case 'wealth_profile':
         await this.syncWealthProfileItem(action, data);
         break;
@@ -832,39 +830,6 @@ class SyncService {
     }
   }
 
-  private async syncDebtItem(_action: string, data: any) {
-    const payload = { ...data };
-    const idIsValid = this.isUuid(data?.id);
-    if (payload.id && !idIsValid) {
-      delete payload.id;
-    }
-
-    if (idIsValid) {
-      try {
-        const response: any = await api.put(`/debts/${data.id}/`, payload);
-        await db.debts.update(data.id, {
-          syncStatus: 'synced',
-          updatedAt: response.updated_at || data.updatedAt,
-        });
-        return;
-      } catch (error) {
-        // If the UUID path cannot be updated, fall back to create
-      }
-    }
-
-    try {
-      const response: any = await api.post('/debts/', payload);
-      await db.debts.update(data.id, {
-        syncStatus: 'synced',
-        updatedAt: response.updated_at || data.updatedAt,
-      });
-    } catch (postError) {
-      console.error('Failed to sync debt:', postError);
-      await db.debts.update(data.id, { syncStatus: 'failed' });
-      throw postError;
-    }
-  }
-
   private async syncPurchasePlanItem(_action: string, data: any) {
     const payload = { ...data };
     const idIsValid = this.isUuid(data?.id);
@@ -1391,7 +1356,7 @@ class SyncService {
 
   async syncWorkouts() {
     if (!this.isOnline) return;
-    
+
     try {
       const workouts = await api.get<any[]>('/workouts/').catch(() => []);
       const localWorkouts = await db.sessions.toArray();
@@ -1399,11 +1364,12 @@ class SyncService {
 
       for (const workout of workouts) {
         const existing = localWorkoutMap.get(workout.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.sessions.put(this.createSyncedRecord(workout));
         }
       }
-      
+
       this.lastSyncedAt = new Date().toISOString();
       this.saveLastSyncedAt();
     } catch (error) {
@@ -1413,7 +1379,7 @@ class SyncService {
 
   async syncXpEvents() {
     if (!this.isOnline) return;
-    
+
     try {
       const events = await api.get<any[]>('/xp-events/').catch(() => []);
       const localEvents = await db.xpEvents.toArray();
@@ -1421,8 +1387,8 @@ class SyncService {
 
       for (const event of events) {
         const existing = localEventMap.get(event.id);
-
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.xpEvents.put(this.createSyncedRecord(event));
         }
       }
@@ -1441,7 +1407,8 @@ class SyncService {
 
       for (const record of records) {
         const existing = localRecordMap.get(record.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.personalRecords.put(this.createSyncedRecord(record));
         }
       }
@@ -1452,7 +1419,7 @@ class SyncService {
 
   async syncQuranReadingLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/quran-reading/').catch(() => []);
       const localLogs = await db.quranReading.toArray();
@@ -1460,7 +1427,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.quranReading.put(this.createSyncedRecord(log));
         }
       }
@@ -1471,7 +1439,7 @@ class SyncService {
 
   async syncMemorizationEntries() {
     if (!this.isOnline) return;
-    
+
     try {
       const entries = await api.get<any[]>('/memorization-entries/').catch(() => []);
       const localEntries = await db.memorization.toArray();
@@ -1479,7 +1447,8 @@ class SyncService {
 
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.memorization.put(this.createSyncedRecord(entry));
         }
       }
@@ -1490,7 +1459,7 @@ class SyncService {
 
   async syncRevisionLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/revisions/').catch(() => []);
       const localLogs = await db.revisions.toArray();
@@ -1498,7 +1467,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.revisions.put(this.createSyncedRecord(log));
         }
       }
@@ -1509,7 +1479,7 @@ class SyncService {
 
   async syncAdhkarLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/adhkar/').catch(() => []);
       const localLogs = await db.adhkarLogs.toArray();
@@ -1517,7 +1487,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.adhkarLogs.put(this.createSyncedRecord(log));
         }
       }
@@ -1528,7 +1499,7 @@ class SyncService {
 
   async syncMissedFasts() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/missed-fasts/').catch(() => []);
       const localLogs = await db.missedFasts.toArray();
@@ -1536,7 +1507,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.missedFasts.put(this.createSyncedRecord(log));
         }
       }
@@ -1547,7 +1519,7 @@ class SyncService {
 
   async syncMeasurements() {
     if (!this.isOnline) return;
-    
+
     try {
       const measurements = await api.get<any[]>('/measurements/').catch(() => []);
       const localMeasurements = await db.measurements.toArray();
@@ -1555,7 +1527,8 @@ class SyncService {
 
       for (const measurement of measurements) {
         const existing = localMeasurementMap.get(measurement.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.measurements.put(this.createSyncedRecord(measurement));
         }
       }
@@ -1566,7 +1539,7 @@ class SyncService {
 
   async syncWeightLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const weights = await api.get<any[]>('/weight-logs/').catch(() => []);
       const localWeights = await db.weights.toArray();
@@ -1574,7 +1547,8 @@ class SyncService {
 
       for (const weight of weights) {
         const existing = localWeightMap.get(weight.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.weights.put(this.createSyncedRecord(weight));
         }
       }
@@ -1585,7 +1559,7 @@ class SyncService {
 
   async syncSleepLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/sleep-logs/').catch(() => []);
       const localLogs = await db.sleepLogs.toArray();
@@ -1593,7 +1567,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.sleepLogs.put(this.createSyncedRecord(log));
         }
       }
@@ -1604,7 +1579,7 @@ class SyncService {
 
   async syncCycleLogs() {
     if (!this.isOnline) return;
-    
+
     try {
       const logs = await api.get<any[]>('/cycle-logs/').catch(() => []);
       const localLogs = await db.cycleLogs.toArray();
@@ -1612,7 +1587,8 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.cycleLogs.put(this.createSyncedRecord(log));
         }
       }
@@ -1623,7 +1599,7 @@ class SyncService {
 
   async syncHealthNotes() {
     if (!this.isOnline) return;
-    
+
     try {
       const notes = await api.get<any[]>('/health-notes/').catch(() => []);
       const localNotes = await db.healthNotes.toArray();
@@ -1631,7 +1607,8 @@ class SyncService {
 
       for (const note of notes) {
         const existing = localNoteMap.get(note.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.healthNotes.put(this.createSyncedRecord(note));
         }
       }
@@ -1642,7 +1619,7 @@ class SyncService {
 
   async syncPerfumeFormulas() {
     if (!this.isOnline) return;
-    
+
     try {
       const formulas = await api.get<any[]>('/perfume-formulas/').catch(() => []);
       const localFormulas = await db.perfumeFormulas.toArray();
@@ -1650,7 +1627,8 @@ class SyncService {
 
       for (const formula of formulas) {
         const existing = localFormulaMap.get(formula.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.perfumeFormulas.put(this.createSyncedRecord(formula));
         }
       }
@@ -1661,7 +1639,7 @@ class SyncService {
 
   async syncSavingsGoals() {
     if (!this.isOnline) return;
-    
+
     try {
       const goals = await api.get<any[]>('/savings-goals/').catch(() => []);
       const localGoals = await db.savingsGoals.toArray();
@@ -1669,7 +1647,8 @@ class SyncService {
 
       for (const goal of goals) {
         const existing = localGoalMap.get(goal.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.savingsGoals.put(this.createSyncedRecord(goal));
         }
       }
@@ -1680,7 +1659,7 @@ class SyncService {
 
   async syncPurchasePlans() {
     if (!this.isOnline) return;
-    
+
     try {
       const plans = await api.get<any[]>('/purchase-plans/').catch(() => []);
       const localPlans = await db.purchasePlans.toArray();
@@ -1688,7 +1667,8 @@ class SyncService {
 
       for (const plan of plans) {
         const existing = localPlanMap.get(plan.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.purchasePlans.put(this.createSyncedRecord(plan));
         }
       }
@@ -1715,7 +1695,7 @@ class SyncService {
 
   async syncJournalEntries() {
     if (!this.isOnline) return;
-    
+
     try {
       const entries = await api.get<any[]>('/journal-entries/').catch(() => []);
       const localEntries = await db.journalEntries.toArray();
@@ -1723,7 +1703,8 @@ class SyncService {
 
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.journalEntries.put(this.createSyncedRecord(entry));
         }
       }
@@ -1734,7 +1715,7 @@ class SyncService {
 
   async syncPeople() {
     if (!this.isOnline) return;
-    
+
     try {
       const people = await api.get<any[]>('/people/').catch(() => []);
       const localPeople = await db.people.toArray();
@@ -1742,7 +1723,8 @@ class SyncService {
 
       for (const person of people) {
         const existing = localPersonMap.get(person.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.people.put(this.createSyncedRecord(person));
         }
       }
@@ -1753,7 +1735,7 @@ class SyncService {
 
   async syncTimelineEvents() {
     if (!this.isOnline) return;
-    
+
     try {
       const events = await api.get<any[]>('/timeline-events/').catch(() => []);
       const localEvents = await db.timelineEvents.toArray();
@@ -1761,7 +1743,8 @@ class SyncService {
 
       for (const event of events) {
         const existing = localEventMap.get(event.id);
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.timelineEvents.put(this.createSyncedRecord(event));
         }
       }
@@ -1772,7 +1755,7 @@ class SyncService {
 
   async syncReadingSessions() {
     if (!this.isOnline) return;
-    
+
     try {
       const sessions = await api.get<any[]>('/reading-sessions/').catch(() => []);
       const localSessions = await db.readingSessions.toArray();
@@ -1781,8 +1764,8 @@ class SyncService {
       for (const session of sessions) {
         const existing = localSessionMap.get(session.id);
         const normalized = this.normalizeRemoteRelationships(session, { book: 'bookId' });
-
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.readingSessions.put(this.createSyncedRecord(normalized));
         }
       }
@@ -1793,7 +1776,7 @@ class SyncService {
 
   async syncPerfumeVersions() {
     if (!this.isOnline) return;
-    
+
     try {
       const versions = await api.get<any[]>('/perfume-versions/').catch(() => []);
       const localVersions = await db.perfumeVersions.toArray();
@@ -1802,8 +1785,8 @@ class SyncService {
       for (const version of versions) {
         const existing = localVersionMap.get(version.id);
         const normalized = this.normalizeRemoteRelationships(version, { formula: 'formulaId' });
-
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.perfumeVersions.put(this.createSyncedRecord(normalized));
         }
       }
@@ -1814,7 +1797,7 @@ class SyncService {
 
   async syncSavingsEntries() {
     if (!this.isOnline) return;
-    
+
     try {
       const entries = await api.get<any[]>('/savings-entries/').catch(() => []);
       const localEntries = await db.savingsEntries.toArray();
@@ -1823,8 +1806,8 @@ class SyncService {
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
         const normalized = this.normalizeRemoteRelationships(entry, { goal: 'goalId' });
-
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.savingsEntries.put(this.createSyncedRecord(normalized));
         }
       }
@@ -1835,7 +1818,7 @@ class SyncService {
 
   async syncCallReminders() {
     if (!this.isOnline) return;
-    
+
     try {
       const reminders = await api.get<any[]>('/call-reminders/').catch(() => []);
       const localReminders = await db.callReminders.toArray();
@@ -1844,8 +1827,8 @@ class SyncService {
       for (const reminder of reminders) {
         const existing = localReminderMap.get(reminder.id);
         const normalized = this.normalizeRemoteRelationships(reminder, { person: 'personId' });
-
-        if (!existing || existing.syncStatus !== 'pending') {
+        // Only add if it doesn't exist locally - never overwrite existing data
+        if (!existing) {
           await db.callReminders.put(this.createSyncedRecord(normalized));
         }
       }

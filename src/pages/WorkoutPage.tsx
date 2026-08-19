@@ -176,7 +176,7 @@ export default function WorkoutPage() {
     };
   }, [activeTimerIndex, sets]);
 
-  const toggleSetTimer = (index: number) => {
+  const toggleSetTimer = async (index: number) => {
     if (activeTimerIndex === index) {
       if (timerRef.current) clearInterval(timerRef.current);
       const updated = [...sets];
@@ -187,6 +187,24 @@ export default function WorkoutPage() {
       setElapsedSeconds(0);
       setRestSeconds(90);
       setIsRestActive(true);
+
+      // Auto-save to IndexedDB to prevent sync from overwriting edits
+      if (existingLog) {
+        const now = new Date().toISOString();
+        await TrainingRepository.saveSession({
+          ...existingLog,
+          updatedAt: now,
+          syncStatus: 'pending',
+          exercises: [
+            {
+              exerciseId: exercise.id,
+              exerciseName: exercise.name,
+              sets: updated,
+              notes: notes,
+            },
+          ],
+        });
+      }
     } else {
       setActiveTimerIndex(index);
       setElapsedSeconds(0);
@@ -227,10 +245,28 @@ export default function WorkoutPage() {
     }
   };
 
-  const handleUpdateSet = (index: number, field: "weightKg" | "reps" | "durationSec", value: number) => {
+  const handleUpdateSet = async (index: number, field: "weightKg" | "reps" | "durationSec", value: number) => {
     const updated = [...sets];
     updated[index][field] = Math.max(0, value);
     setSets(updated);
+
+    // Auto-save to IndexedDB to prevent sync from overwriting edits
+    if (existingLog) {
+      const now = new Date().toISOString();
+      await TrainingRepository.saveSession({
+        ...existingLog,
+        updatedAt: now,
+        syncStatus: 'pending',
+        exercises: [
+          {
+            exerciseId: exercise.id,
+            exerciseName: exercise.name,
+            sets: updated,
+            notes: notes,
+          },
+        ],
+      });
+    }
   };
 
   const handleFinishSession = async () => {
