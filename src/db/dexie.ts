@@ -5,7 +5,6 @@ import type {
   Book,
   CallReminder,
   CycleLog,
-  Debt,
   HealthNote,
   JournalEntry,
   Measurement,
