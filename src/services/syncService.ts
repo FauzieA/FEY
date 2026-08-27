@@ -1364,9 +1364,15 @@ class SyncService {
 
       for (const workout of workouts) {
         const existing = localWorkoutMap.get(workout.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.sessions.put(this.createSyncedRecord(workout));
+        } else if (existing.syncStatus !== 'pending') {
+          // Only overwrite if server version is newer than local version
+          const serverUpdatedAt = new Date(workout.updated_at || workout.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.sessions.put(this.createSyncedRecord(workout));
+          }
         }
       }
 
@@ -1387,9 +1393,14 @@ class SyncService {
 
       for (const event of events) {
         const existing = localEventMap.get(event.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.xpEvents.put(this.createSyncedRecord(event));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(event.updated_at || event.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.xpEvents.put(this.createSyncedRecord(event));
+          }
         }
       }
     } catch (error) {
@@ -1407,9 +1418,14 @@ class SyncService {
 
       for (const record of records) {
         const existing = localRecordMap.get(record.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.personalRecords.put(this.createSyncedRecord(record));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(record.updated_at || record.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.personalRecords.put(this.createSyncedRecord(record));
+          }
         }
       }
     } catch (error) {
@@ -1427,9 +1443,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.quranReading.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.quranReading.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1447,9 +1468,14 @@ class SyncService {
 
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.memorization.put(this.createSyncedRecord(entry));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(entry.updated_at || entry.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.memorization.put(this.createSyncedRecord(entry));
+          }
         }
       }
     } catch (error) {
@@ -1467,9 +1493,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.revisions.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.revisions.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1487,9 +1518,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.adhkarLogs.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.adhkarLogs.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1507,9 +1543,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.missedFasts.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.missedFasts.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1527,9 +1568,14 @@ class SyncService {
 
       for (const measurement of measurements) {
         const existing = localMeasurementMap.get(measurement.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.measurements.put(this.createSyncedRecord(measurement));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(measurement.updated_at || measurement.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.measurements.put(this.createSyncedRecord(measurement));
+          }
         }
       }
     } catch (error) {
@@ -1547,9 +1593,14 @@ class SyncService {
 
       for (const weight of weights) {
         const existing = localWeightMap.get(weight.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.weights.put(this.createSyncedRecord(weight));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(weight.updated_at || weight.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.weights.put(this.createSyncedRecord(weight));
+          }
         }
       }
     } catch (error) {
@@ -1567,9 +1618,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.sleepLogs.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.sleepLogs.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1587,9 +1643,14 @@ class SyncService {
 
       for (const log of logs) {
         const existing = localLogMap.get(log.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.cycleLogs.put(this.createSyncedRecord(log));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(log.updated_at || log.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.cycleLogs.put(this.createSyncedRecord(log));
+          }
         }
       }
     } catch (error) {
@@ -1607,9 +1668,14 @@ class SyncService {
 
       for (const note of notes) {
         const existing = localNoteMap.get(note.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.healthNotes.put(this.createSyncedRecord(note));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(note.updated_at || note.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.healthNotes.put(this.createSyncedRecord(note));
+          }
         }
       }
     } catch (error) {
@@ -1627,9 +1693,14 @@ class SyncService {
 
       for (const formula of formulas) {
         const existing = localFormulaMap.get(formula.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.perfumeFormulas.put(this.createSyncedRecord(formula));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(formula.updated_at || formula.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.perfumeFormulas.put(this.createSyncedRecord(formula));
+          }
         }
       }
     } catch (error) {
@@ -1647,9 +1718,14 @@ class SyncService {
 
       for (const goal of goals) {
         const existing = localGoalMap.get(goal.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.savingsGoals.put(this.createSyncedRecord(goal));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(goal.updated_at || goal.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.savingsGoals.put(this.createSyncedRecord(goal));
+          }
         }
       }
     } catch (error) {
@@ -1667,9 +1743,14 @@ class SyncService {
 
       for (const plan of plans) {
         const existing = localPlanMap.get(plan.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.purchasePlans.put(this.createSyncedRecord(plan));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(plan.updated_at || plan.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.purchasePlans.put(this.createSyncedRecord(plan));
+          }
         }
       }
     } catch (error) {
@@ -1703,9 +1784,14 @@ class SyncService {
 
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.journalEntries.put(this.createSyncedRecord(entry));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(entry.updated_at || entry.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.journalEntries.put(this.createSyncedRecord(entry));
+          }
         }
       }
     } catch (error) {
@@ -1723,9 +1809,14 @@ class SyncService {
 
       for (const person of people) {
         const existing = localPersonMap.get(person.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.people.put(this.createSyncedRecord(person));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(person.updated_at || person.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.people.put(this.createSyncedRecord(person));
+          }
         }
       }
     } catch (error) {
@@ -1743,9 +1834,14 @@ class SyncService {
 
       for (const event of events) {
         const existing = localEventMap.get(event.id);
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.timelineEvents.put(this.createSyncedRecord(event));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(event.updated_at || event.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.timelineEvents.put(this.createSyncedRecord(event));
+          }
         }
       }
     } catch (error) {
@@ -1764,9 +1860,14 @@ class SyncService {
       for (const session of sessions) {
         const existing = localSessionMap.get(session.id);
         const normalized = this.normalizeRemoteRelationships(session, { book: 'bookId' });
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.readingSessions.put(this.createSyncedRecord(normalized));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(session.updated_at || session.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.readingSessions.put(this.createSyncedRecord(normalized));
+          }
         }
       }
     } catch (error) {
@@ -1785,9 +1886,14 @@ class SyncService {
       for (const version of versions) {
         const existing = localVersionMap.get(version.id);
         const normalized = this.normalizeRemoteRelationships(version, { formula: 'formulaId' });
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.perfumeVersions.put(this.createSyncedRecord(normalized));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(version.updated_at || version.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.perfumeVersions.put(this.createSyncedRecord(normalized));
+          }
         }
       }
     } catch (error) {
@@ -1806,9 +1912,14 @@ class SyncService {
       for (const entry of entries) {
         const existing = localEntryMap.get(entry.id);
         const normalized = this.normalizeRemoteRelationships(entry, { goal: 'goalId' });
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.savingsEntries.put(this.createSyncedRecord(normalized));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(entry.updated_at || entry.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.savingsEntries.put(this.createSyncedRecord(normalized));
+          }
         }
       }
     } catch (error) {
@@ -1827,9 +1938,14 @@ class SyncService {
       for (const reminder of reminders) {
         const existing = localReminderMap.get(reminder.id);
         const normalized = this.normalizeRemoteRelationships(reminder, { person: 'personId' });
-        // Only add if it doesn't exist locally - never overwrite existing data
         if (!existing) {
           await db.callReminders.put(this.createSyncedRecord(normalized));
+        } else if (existing.syncStatus !== 'pending') {
+          const serverUpdatedAt = new Date(reminder.updated_at || reminder.updatedAt).getTime();
+          const localUpdatedAt = new Date(existing.updatedAt).getTime();
+          if (serverUpdatedAt > localUpdatedAt) {
+            await db.callReminders.put(this.createSyncedRecord(normalized));
+          }
         }
       }
     } catch (error) {
